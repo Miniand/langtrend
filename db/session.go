@@ -3,7 +3,6 @@ package db
 import (
 	"log"
 
-	"github.com/Miniand/langtrend/github"
 	"github.com/dancannon/gorethink"
 )
 
@@ -34,6 +33,29 @@ func (s *Session) Db() gorethink.Term {
 
 func (s *Session) Migrate() error {
 	// Create database
+	if err := s.CreateDatabase(); err != nil {
+		return err
+	}
+	// Create languages table
+	if err := s.CreateLanguagesTable(); err != nil {
+		return err
+	}
+	// Ensure row for all languages exists
+	if err := s.CreateLanguages(); err != nil {
+		return err
+	}
+	// Ensure the created field exists
+	if err := s.AddCreatedToLanguages(); err != nil {
+		return err
+	}
+	// Ensure the updated field exists
+	if err := s.AddUpdatedToLanguages(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Session) CreateDatabase() error {
 	cur, err := gorethink.DbList().Run(s.Session)
 	if err != nil {
 		return err
@@ -51,39 +73,6 @@ func (s *Session) Migrate() error {
 		_, err := gorethink.DbCreate(s.Options.Database).RunWrite(s.Session)
 		if err != nil {
 			return err
-		}
-	}
-	// Create languages table
-	cur, err = s.Db().TableList().Run(s.Session)
-	if err != nil {
-		return err
-	}
-	tableName := ""
-	found = false
-	for cur.Next(&tableName) {
-		if tableName == "languages" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		log.Println("creating table languages")
-		_, err := s.Db().TableCreate("languages").RunWrite(s.Session)
-		if err != nil {
-			return err
-		}
-	}
-	// Ensure row for all languages exists
-	for _, l := range github.Languages {
-		exists, err := s.LanguageExists(l)
-		if err != nil {
-			log.Fatalf("unable to check if language %s exists, %s\n", l, err)
-		}
-		if exists {
-			continue
-		}
-		if err := s.CreateLanguage(l); err != nil {
-			log.Fatalf("unable to create language row for %s, %s\n", l, err)
 		}
 	}
 	return nil
