@@ -82,8 +82,8 @@ func (s *Session) LastLanguageCount(kind string) (
 	found = true
 	err = cur.One(&ldc)
 	return
-
 }
+
 func (s *Session) FirstLanguageCount(kind string) (
 	ldc LanguageDateCount, found bool, err error) {
 	cur, err := s.Db().Table(kind).Group("language").Min("date").Field("date").

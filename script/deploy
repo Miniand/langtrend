@@ -1,0 +1,46 @@
+#!/bin/bash
+
+TMP_DIR=${TMP_DIR:-../tmp}
+
+cd $( dirname $0 )
+
+# Run tests
+go test ../...
+if [ $? -ne 0 ]; then
+	echo "Error running tests"
+	exit 1
+fi
+
+# Clean tmp dir
+rm -rf "${TMP_DIR}" && mkdir -p "${TMP_DIR}"
+
+# Build worker
+go build -o "${TMP_DIR}/langtrend-worker" github.com/Miniand/langtrend/worker/main
+if [ $? -ne 0 ]; then
+	echo "Error building worker"
+	exit 1
+fi
+echo "Built worker"
+
+# Build web
+go build -o "${TMP_DIR}/langtrend-web" github.com/Miniand/langtrend/web/main
+if [ $? -ne 0 ]; then
+	echo "Error building web"
+	exit 1
+fi
+echo "Built web"
+
+# Upload binaries
+scp "${TMP_DIR}/langtrend-worker" "${TMP_DIR}/langtrend-web" root@104.131.208.206:/usr/bin/
+if [ $? -ne 0 ]; then
+	echo "Error uploading binaries"
+	exit 1
+fi
+
+# Restart services
+ssh root@104.131.208.206 "service langtrend-worker restart && service langtrend-web restart"
+if [ $? -ne 0 ]; then
+	echo "Error restarting services"
+	exit 1
+fi
+
