@@ -19,7 +19,10 @@ type SearchResult struct {
 	IncompleteResults bool `json:"incomplete_results"`
 }
 
-func ApiSearch(args map[string]string, username, password string) (SearchResult, error) {
+func ApiSearch(
+	args map[string]string,
+	username, password string,
+) (SearchResult, error) {
 	sr := SearchResult{}
 	client := &http.Client{}
 	query := []string{}
@@ -45,24 +48,13 @@ func ApiSearch(args map[string]string, username, password string) (SearchResult,
 	return sr, err
 }
 
-func GetCreatedOnDateForLang(date time.Time, lang, username, password string) (int, error) {
+func GetCountOnDateForLang(
+	date time.Time,
+	kind, language, username, password string,
+) (int, error) {
 	sr, err := ApiSearch(map[string]string{
-		"language": lang,
-		"created":  FormatDate(date),
-	}, username, password)
-	if err != nil {
-		return 0, err
-	}
-	if sr.IncompleteResults {
-		return 0, errors.New("got incomplete results")
-	}
-	return sr.TotalCount, nil
-}
-
-func GetPushedOnDateForLang(date time.Time, lang, username, password string) (int, error) {
-	sr, err := ApiSearch(map[string]string{
-		"language": lang,
-		"pushed":   FormatDate(date),
+		"language": language,
+		kind:       FormatDate(date),
 	}, username, password)
 	if err != nil {
 		return 0, err

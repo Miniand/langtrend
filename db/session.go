@@ -37,20 +37,11 @@ func (s *Session) Migrate() error {
 		return err
 	}
 	// Create languages table
-	if err := s.CreateLanguagesTable(); err != nil {
+	if err := s.CreateCreatedTable(); err != nil {
 		return err
 	}
-	// Ensure row for all languages exists
-	if err := s.CreateLanguages(); err != nil {
-		return err
-	}
-	// Ensure the created field exists
-	if err := s.AddCreatedToLanguages(); err != nil {
-		return err
-	}
-	// Ensure the pushed field exists
-	if err := s.AddPushedToLanguages(); err != nil {
-		return err
+	// Create pushed table
+	if err := s.CreatePushedTable(); err != nil {
 	}
 	return nil
 }
@@ -71,6 +62,52 @@ func (s *Session) CreateDatabase() error {
 	if !found {
 		log.Printf("creating database %s\n", s.Options.Database)
 		_, err := gorethink.DbCreate(s.Options.Database).RunWrite(s.Session)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Session) CreateTableIfNotExists(table string) error {
+	cur, err := s.Db().TableList().Run(s.Session)
+	if err != nil {
+		return err
+	}
+	tableName := ""
+	found := false
+	for cur.Next(&tableName) {
+		if tableName == table {
+			found = true
+			break
+		}
+	}
+	if !found {
+		log.Printf("creating table %s\n", table)
+		_, err := s.Db().TableCreate(table).RunWrite(s.Session)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Session) CreateIndexIfNotExists(table, index string) error {
+	cur, err := s.Db().Table(table).IndexList().Run(s.Session)
+	if err != nil {
+		return err
+	}
+	indexName := ""
+	found := false
+	for cur.Next(&indexName) {
+		if indexName == index {
+			found = true
+			break
+		}
+	}
+	if !found {
+		log.Printf("creating index %s.%s\n", table, index)
+		_, err := s.Db().Table(table).IndexCreate(index).RunWrite(s.Session)
 		if err != nil {
 			return err
 		}

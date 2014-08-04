@@ -17,7 +17,7 @@ func (w *Worker) Run() {
 	for {
 		time.Sleep(w.Options.rate())
 		// Fetch created count for the next language in the queue.
-		ran, err := w.FetchCreated()
+		ran, err := w.FetchNextDateVal("created")
 		if err != nil {
 			log.Printf("error fetching created, %s", err)
 			continue
@@ -26,7 +26,7 @@ func (w *Worker) Run() {
 			continue
 		}
 		// Fetch pushed count for the next language in the queue.
-		ran, err = w.FetchPushed()
+		ran, err = w.FetchNextDateVal("pushed")
 		if err != nil {
 			log.Printf("error fetching pushed, %s", err)
 			continue
