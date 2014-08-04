@@ -48,8 +48,8 @@ func (s *Session) Migrate() error {
 	if err := s.AddCreatedToLanguages(); err != nil {
 		return err
 	}
-	// Ensure the updated field exists
-	if err := s.AddUpdatedToLanguages(); err != nil {
+	// Ensure the pushed field exists
+	if err := s.AddPushedToLanguages(); err != nil {
 		return err
 	}
 	return nil
