@@ -13,11 +13,32 @@ type Session struct {
 
 type Options struct {
 	Database  string
+	Address   string
 	Rethinkdb gorethink.ConnectOpts
 }
 
+func (o *Options) database() string {
+	if o.Database != "" {
+		return o.Database
+	}
+	return "pla"
+}
+
+func (o *Options) address() string {
+	if o.Address != "" {
+		return o.Address
+	}
+	return "localhost:28015"
+}
+
+func (o *Options) rethinkdb() gorethink.ConnectOpts {
+	o.Rethinkdb.Address = o.address()
+	o.Rethinkdb.Database = o.database()
+	return o.Rethinkdb
+}
+
 func Connect(opts Options) (*Session, error) {
-	sess, err := gorethink.Connect(opts.Rethinkdb)
+	sess, err := gorethink.Connect(opts.rethinkdb())
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +49,7 @@ func Connect(opts Options) (*Session, error) {
 }
 
 func (s *Session) Db() gorethink.Term {
-	return gorethink.Db(s.Options.Database)
+	return gorethink.Db(s.Options.database())
 }
 
 func (s *Session) Migrate() error {
@@ -54,7 +75,7 @@ func (s *Session) CreateDatabase() error {
 	dbName := ""
 	found := false
 	for cur.Next(&dbName) {
-		if dbName == s.Options.Database {
+		if dbName == s.Options.database() {
 			found = true
 			break
 		}

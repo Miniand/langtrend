@@ -100,3 +100,13 @@ func (s *Session) FirstLanguageCount(kind string) (
 	err = cur.One(&ldc)
 	return
 }
+
+func (s *Session) LanguageCounts(language, kind string) ([]LanguageDateCount, error) {
+	cur, err := s.Db().Table(kind).GetAllByIndex("language", language).OrderBy("date").Run(s.Session)
+	if err != nil {
+		return nil, err
+	}
+	languages := []LanguageDateCount{}
+	err = cur.All(&languages)
+	return languages, err
+}

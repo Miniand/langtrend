@@ -3,35 +3,27 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/Miniand/langtrend/db"
 	"github.com/Miniand/langtrend/web"
-	"github.com/dancannon/gorethink"
+	"github.com/Miniand/langtrend/web/options"
 )
 
 func main() {
 	// Connect to database.
-	database := os.Getenv("PLA_DATABASE")
-	if database == "" {
-		database = "pla"
-	}
-	dbAddress := os.Getenv("PLA_RETHINKDB_ADDRESS")
-	if dbAddress == "" {
-		dbAddress = "localhost:28015"
-	}
 	session, err := db.Connect(db.Options{
-		Database: database,
-		Rethinkdb: gorethink.ConnectOpts{
-			Address:  dbAddress,
-			Database: database,
-		},
+		Database: os.Getenv("DATABASE"),
+		Address:  os.Getenv("RETHINKDB_ADDRESS"),
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := web.New(web.Options{
+	port, _ := strconv.Atoi(os.Getenv("PORT"))
+	if err := web.New(options.Options{
 		Db:   session,
-		Addr: ":9999",
+		Addr: os.Getenv("ADDRESS"),
+		Port: port,
 	}).Run(); err != nil {
 		log.Fatal(err)
 	}
