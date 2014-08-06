@@ -43,7 +43,7 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 	labels := make([]string, len(data.Counts))
 	values := make([]int, len(data.Counts))
 	for i, c := range data.Counts {
-		labels[i] = c.Date
+		labels[i] = c.Date.Format("2006-01-02")
 		values[i] = c.Count
 	}
 	chartData := map[string]interface{}{

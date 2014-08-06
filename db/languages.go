@@ -3,7 +3,6 @@ package db
 import (
 	"time"
 
-	"github.com/Miniand/langtrend/github"
 	"github.com/dancannon/gorethink"
 )
 
@@ -13,14 +12,10 @@ const (
 )
 
 type LanguageDateCount struct {
-	Id       string `gorethink:"id"`
-	Language string `gorethink:"language"`
-	Date     string `gorethink:"date"`
-	Count    int    `gorethink:"count"`
-}
-
-func (l LanguageDateCount) Time() (time.Time, error) {
-	return github.ParseDate(l.Date)
+	Id       string    `gorethink:"id,omitempty"`
+	Language string    `gorethink:"language"`
+	Date     time.Time `gorethink:"date"`
+	Count    int       `gorethink:"count"`
 }
 
 func (s *Session) LanguageList(table string) ([]string, error) {
@@ -59,10 +54,10 @@ func (s *Session) SaveLanguageCount(
 	date time.Time,
 	count int,
 ) error {
-	_, err := s.Db().Table(table).Insert(map[string]interface{}{
-		"language": language,
-		"date":     github.FormatDate(date),
-		"count":    count,
+	_, err := s.Db().Table(table).Insert(LanguageDateCount{
+		Language: language,
+		Date:     date,
+		Count:    count,
 	}).RunWrite(s.Session)
 	return err
 }

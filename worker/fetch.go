@@ -41,26 +41,24 @@ func (w *Worker) FetchNextDateVal(kind string) (ran bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	if found && ldc.Date < github.FormatDate(latest) {
-		date, err := ldc.Time()
+	if found && ldc.Date.Before(latest) {
 		if err != nil {
 			return true, fmt.Errorf(`unable to get the time from lcd, %v`, err)
 		}
 		return true, w.FetchDateVal(kind, ldc.Language,
-			date.Add(time.Duration(24)*time.Hour))
+			ldc.Date.Add(time.Duration(24)*time.Hour))
 	}
 	// Check if a language doesn't have past entries.
 	ldc, found, err = w.Options.Db.FirstLanguageCount(kind)
 	if err != nil {
 		return false, err
 	}
-	if found && ldc.Date > github.FormatDate(earliest) {
-		date, err := ldc.Time()
+	if found && ldc.Date.After(earliest) {
 		if err != nil {
 			return true, fmt.Errorf(`unable to get the time from lcd, %v`, err)
 		}
 		return true, w.FetchDateVal(kind, ldc.Language,
-			date.Add(time.Duration(-24)*time.Hour))
+			ldc.Date.Add(time.Duration(-24)*time.Hour))
 	}
 	return false, nil
 }
