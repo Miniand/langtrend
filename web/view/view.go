@@ -1,19 +1,21 @@
 package view
 
-import "html/template"
+import (
+	"fmt"
+	"html/template"
+)
 
-var baseT = template.Must(template.New("baseT").Parse(`
+var baseT = template.Must(template.New("baseT").Parse(fmt.Sprintf(`
 {{define "header"}}
 <html>
 <head>
 <title>Lang Trend{{if .Title}} - {{.Title}}{{end}}</title>
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/pure/0.5.0/pure-min.css">
 <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-<script src="//cdnjs.cloudflare.com/ajax/libs/Chart.js/0.2.0/Chart.min.js"></script>
+<script>%s</script>
 <!--[if lte IE 8]>
 	<script src="excanvas.js"></script>
 <![endif]-->
-<body>
 <script>
 function initCharts() {
 	$('[data-chart]:not([data-chart-initialised])').each(function() {
@@ -25,21 +27,37 @@ function initCharts() {
 			options = $.parseJSON(options);
 		}
 		var c = new Chart(this.getContext("2d"));
-		c[type](data, options);
+		var created = c[type](data, options);
+		if (el.attr('data-chart-legend')) {
+			$(el.attr('data-chart-legend')).html(created.generateLegend());
+		}
 		el.attr('data-chart-initialised', true);
 	});
 }
 $(document).ready(function() {
+	Chart.defaults.global.responsive = true;
 	initCharts();
 });
 </script>
+<style>
+ul.line-legend {
+	list-style-type: none;
+}
+.line-legend span {
+	display: inline-block;
+	height: 1em;
+	width: 1em;
+	margin-right: 0.3em;
+}
+</style>
+<body>
 {{end}}
 
 {{define "footer"}}
 </body>
 </html>
 {{end}}
-`))
+`, chartjs)))
 
 type HeaderData struct {
 	Title string

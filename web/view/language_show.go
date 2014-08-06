@@ -2,6 +2,9 @@ package view
 
 import (
 	"encoding/json"
+	"fmt"
+	"image/color"
+	"image/color/palette"
 	"io"
 	"sync"
 
@@ -11,20 +14,14 @@ import (
 var languageShowMutex = &sync.Mutex{}
 
 var languageShowT = `{{template "header" .HeaderData}}
-<h1>{{.Name}}</h1>
-
-<p>
-{{range .Counts}}
-{{.Count}}
-{{end}}
-</p>
-<canvas width="1600" height="700" data-chart="Line"
+<div id="legend" style="position:absolute; top: 30px; left: 30px;"></div>
+<canvas data-chart="Line" data-chart-legend="#legend"
 	data-chart-data="{{.ChartData}}"></canvas>
 {{template "footer"}}`
 
 type LanguageShowData struct {
 	Name       string
-	Counts     []db.LanguageDateCount
+	Counts     [][]db.LanguageDateCount
 	ChartData  string
 	HeaderData HeaderData
 }
@@ -40,26 +37,36 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 		}
 	}
 	languageShowMutex.Unlock()
-	labels := make([]string, len(data.Counts))
-	values := make([]int, len(data.Counts))
-	for i, c := range data.Counts {
-		labels[i] = c.Date.Format("2006-01-02")
-		values[i] = c.Count
+	labels := make([]string, len(data.Counts[0]))
+	datasets := make([]ChartData, len(data.Counts))
+	for i, lang := range data.Counts {
+		col := palette.WebSafe[i*28].(color.RGBA)
+		datasets[i].FillColor = fmt.Sprintf(
+			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 0.2)
+		datasets[i].StrokeColor = fmt.Sprintf(
+			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
+		datasets[i].PointColor = fmt.Sprintf(
+			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
+		datasets[i].PointStrokeColor = "#fff"
+		datasets[i].PointHighlightFill = "#fff"
+		datasets[i].PointHighlightStroke = fmt.Sprintf(
+			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
+		data := make([]float64, len(lang))
+		for j, count := range lang {
+			if i == 0 {
+				labels[j] = count.Date.Format("2006-01-02")
+			}
+			if j == 0 {
+				datasets[i].Label = count.Language
+			}
+			data[j] = float64(count.Count)
+		}
+		datasets[i].Data = data
 	}
+
 	chartData := map[string]interface{}{
-		"labels": labels,
-		"datasets": []map[string]interface{}{
-			{
-				"label":                "My First dataset",
-				"fillColor":            "rgba(220,220,220,0.2)",
-				"strokeColor":          "rgba(220,220,220,1)",
-				"pointColor":           "rgba(220,220,220,1)",
-				"pointStrokeColor":     "#fff",
-				"pointHighlightFill":   "#fff",
-				"pointHighlightStroke": "rgba(220,220,220,1)",
-				"data":                 values,
-			},
-		},
+		"labels":   labels,
+		"datasets": datasets,
 	}
 	j, err := json.Marshal(chartData)
 	if err != nil {
