@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/Miniand/langtrend/db"
+	"github.com/Miniand/langtrend/github"
 )
 
 var languageShowMutex = &sync.Mutex{}
@@ -44,17 +45,6 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 	labels := make([]string, len(data.Counts[0]))
 	datasets := make([]ChartData, len(data.Counts))
 	for i, lang := range data.Counts {
-		col := palette.WebSafe[i*28].(color.RGBA)
-		datasets[i].FillColor = fmt.Sprintf(
-			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 0.2)
-		datasets[i].StrokeColor = fmt.Sprintf(
-			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
-		datasets[i].PointColor = fmt.Sprintf(
-			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
-		datasets[i].PointStrokeColor = "#fff"
-		datasets[i].PointHighlightFill = "#fff"
-		datasets[i].PointHighlightStroke = fmt.Sprintf(
-			"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
 		data := make([]float64, len(lang))
 		for j, count := range lang {
 			if i == 0 {
@@ -62,6 +52,20 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 			}
 			if j == 0 {
 				datasets[i].Label = count.Language
+				col := palette.WebSafe[i*28].(color.RGBA)
+				if c, ok := github.LanguageColors[count.Language]; ok {
+					col = c
+				}
+				datasets[i].FillColor = fmt.Sprintf(
+					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 0.2)
+				datasets[i].StrokeColor = fmt.Sprintf(
+					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
+				datasets[i].PointColor = fmt.Sprintf(
+					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
+				datasets[i].PointStrokeColor = "#fff"
+				datasets[i].PointHighlightFill = "#fff"
+				datasets[i].PointHighlightStroke = fmt.Sprintf(
+					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
 			}
 			data[j] = float64(count.Count)
 		}

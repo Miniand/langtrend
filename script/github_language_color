@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+
+require 'yaml'
+require 'net/http'
+
+langs = YAML.load(Net::HTTP.get(URI(
+  'https://raw.githubusercontent.com/github/linguist/master/lib/linguist/languages.yml')))
+
+puts "package github
+
+import \"image/color\"
+
+var LanguageColors = map[string]color.RGBA{
+"
+langs.each_pair do |k, l|
+  next if l['color'].nil?
+  hex = l['color'].downcase.gsub(/[^a-f0-9]/, "")
+  hex = hex.split("").map {|c| c*2}.join if hex.length == 3
+
+  puts "	\"#{k}\": color.RGBA{#{hex[0..1].hex}, #{hex[2..3].hex}, #{hex[4..5].hex}, 0},"
+end
+puts "}"
