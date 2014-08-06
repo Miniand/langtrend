@@ -30,6 +30,14 @@ if [ $? -ne 0 ]; then
 fi
 echo "Built web"
 
+# Stop services
+ssh root@104.131.208.206 "service langtrend-worker status | grep stop || service langtrend-worker stop &&
+service langtrend-web status | grep stop || service langtrend-web stop"
+if [ $? -ne 0 ]; then
+	echo "Error stopping services"
+	exit 1
+fi
+
 # Upload binaries
 scp "${TMP_DIR}/langtrend-worker" "${TMP_DIR}/langtrend-web" root@104.131.208.206:/usr/bin/
 if [ $? -ne 0 ]; then
@@ -37,10 +45,10 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-# Restart services
-ssh root@104.131.208.206 "service langtrend-worker restart && service langtrend-web restart"
+# Start services
+ssh root@104.131.208.206 "service langtrend-worker start && service langtrend-web start"
 if [ $? -ne 0 ]; then
-	echo "Error restarting services"
+	echo "Error starting services"
 	exit 1
 fi
 
