@@ -14,7 +14,7 @@ import (
 var languageShowMutex = &sync.Mutex{}
 
 var languageShowT = `{{template "header" .HeaderData}}
-<div style="width:50%;margin:0 auto;">
+<div style="width:62%;margin:0 auto;">
 	<div style="position:relative; top: 30px; left: 70px;">
 		<div id="legend" style="position:absolute;"></div>
 	</div>
