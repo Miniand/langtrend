@@ -21,7 +21,7 @@ func (w *Worker) FetchDateVal(kind, language string, date time.Time) error {
 
 func (w *Worker) FetchNextDateVal(kind string) (ran bool, err error) {
 	earliest := w.Options.earliest()
-	latest := time.Now().Add(2 * -24 * time.Hour)
+	latest := time.Now().Add(-24 * time.Hour)
 	// Check if a language doesn't have eny entries yet.
 	existingLangs := map[string]bool{}
 	langs, err := w.Options.Db.LanguageList(kind)
