@@ -12,7 +12,7 @@ import (
 func Language(opts options.Options) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		counts, err := opts.Db.LanguageCounts(vars["language"], "created")
+		counts, err := opts.Db.LanguageCountsByWeek(vars["language"], "created")
 		if err != nil {
 			log.Fatalf("could not get language counts for %s, %v",
 				vars["language"], err)

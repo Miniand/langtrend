@@ -101,7 +101,26 @@ func (s *Session) LanguageCounts(language, kind string) ([]LanguageDateCount, er
 	if err != nil {
 		return nil, err
 	}
-	languages := []LanguageDateCount{}
-	err = cur.All(&languages)
-	return languages, err
+	counts := []LanguageDateCount{}
+	err = cur.All(&counts)
+	return counts, err
+}
+
+func (s *Session) LanguageCountsByWeek(language, kind string) ([]LanguageDateCount, error) {
+	cur, err := s.Db().Table(kind).GetAllByIndex("language", language).Group(
+		func(row gorethink.Term) interface{} {
+			return row.Field("date").ToEpochTime().Div(604000).CoerceTo("STRING").Split(".").Nth(0).CoerceTo("NUMBER")
+		}).Sum("count").Ungroup().Map(func(row gorethink.Term) interface{} {
+		return map[string]interface{}{
+			"language": language,
+			"date":     gorethink.EpochTime(row.Field("group").Mul(604000)),
+			"count":    row.Field("reduction"),
+		}
+	}).OrderBy("date").Run(s.Session)
+	if err != nil {
+		return nil, err
+	}
+	counts := []LanguageDateCount{}
+	err = cur.All(&counts)
+	return counts, err
 }
