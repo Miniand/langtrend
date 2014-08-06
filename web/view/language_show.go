@@ -14,9 +14,13 @@ import (
 var languageShowMutex = &sync.Mutex{}
 
 var languageShowT = `{{template "header" .HeaderData}}
-<div id="legend" style="position:absolute; top: 30px; left: 30px;"></div>
-<canvas data-chart="Line" data-chart-legend="#legend"
-	data-chart-data="{{.ChartData}}"></canvas>
+<div style="width:50%;margin:0 auto;">
+	<div style="position:relative; top: 30px; left: 70px;">
+		<div id="legend" style="position:absolute;"></div>
+	</div>
+	<canvas data-chart="Line" data-chart-legend="#legend"
+		data-chart-data="{{.ChartData}}"></canvas>
+</div>
 {{template "footer"}}`
 
 type LanguageShowData struct {

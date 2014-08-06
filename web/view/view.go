@@ -35,13 +35,24 @@ function initCharts() {
 	});
 }
 $(document).ready(function() {
+	Chart.defaults.global.animation = false;
 	Chart.defaults.global.responsive = true;
 	initCharts();
 });
 </script>
 <style>
 ul.line-legend {
+	cursor: default;
 	list-style-type: none;
+	background-color: rgba(255,255,255,0.5);
+	padding: 0;
+	margin: 0;
+	opacity: 1;
+	transition: opacity 0.2s;
+}
+ul.line-legend:hover {
+	opacity: 0.2;
+	transition: 0.2s;
 }
 .line-legend span {
 	display: inline-block;
