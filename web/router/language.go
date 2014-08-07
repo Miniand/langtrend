@@ -17,7 +17,7 @@ func Language(opts options.Options) func(w http.ResponseWriter, r *http.Request)
 		languages := strings.Split(vars["language"], ",")
 		counts := [][]db.LanguageDateCount{}
 		for _, l := range languages {
-			c, err := opts.Db.LanguageCountsByWeek(l, "created")
+			c, err := opts.Db.LanguageCountsByMonth(l, "created")
 			if err != nil {
 				log.Fatalf("could not get language counts for %s, %v",
 					vars["language"], err)
