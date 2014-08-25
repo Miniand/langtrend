@@ -1,9 +1,6 @@
 package worker
 
-import (
-	"log"
-	"time"
-)
+import "log"
 
 type Worker struct {
 	Options Options
@@ -15,7 +12,6 @@ func New(options Options) *Worker {
 
 func (w *Worker) Run() {
 	for {
-		time.Sleep(w.Options.rate())
 		// Fetch created count for the next language in the queue.
 		ran, err := w.FetchNextDateVal("created")
 		if err != nil {

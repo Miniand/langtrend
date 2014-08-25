@@ -8,11 +8,28 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/beefsack/go-rate-limiter"
 )
 
 const (
 	DateFormat = "2006-01-02"
 )
+
+var rateLimiters = map[string]*rate_limiter.RateLimiter{}
+
+func rateLimiter(name string) *rate_limiter.RateLimiter {
+	rl, ok := rateLimiters[name]
+	if !ok {
+		limit := 20
+		if name == "" {
+			limit = 5
+		}
+		rl = rate_limiter.New(limit, time.Minute)
+		rateLimiters[name] = rl
+	}
+	return rl
+}
 
 type SearchResult struct {
 	TotalCount        int  `json:"total_count"`
@@ -23,6 +40,7 @@ func ApiSearch(
 	args map[string]string,
 	username, password string,
 ) (SearchResult, error) {
+	rateLimiter(username).Wait()
 	sr := SearchResult{}
 	client := &http.Client{}
 	query := []string{}

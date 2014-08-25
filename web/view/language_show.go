@@ -7,7 +7,6 @@ import (
 	"image/color/palette"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/Miniand/langtrend/db"
 	"github.com/Miniand/langtrend/github"
@@ -43,16 +42,11 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 		}
 	}
 	languageShowMutex.Unlock()
-	labels := make([]string, len(data.Counts[0])-2)
+	labels := make([]string, len(data.Counts[0]))
 	datasets := make([]ChartData, len(data.Counts))
-	now := time.Now()
 	for i, lang := range data.Counts {
-		data := make([]float64, len(lang)-2)
-		for j, count := range lang[1:] {
-			if count.Date.Year() == now.Year() && count.Date.Month() == now.Month() {
-				// Ignore the first and this month because we don't want incomplete data
-				continue
-			}
+		data := make([]float64, len(lang))
+		for j, count := range lang {
 			if i == 0 {
 				labels[j] = count.Date.Format("Jan 2006")
 			}

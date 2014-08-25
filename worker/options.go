@@ -14,18 +14,6 @@ type Options struct {
 	Earliest time.Time
 }
 
-func (o Options) rate() time.Duration {
-	if o.Rate != 0 {
-		return o.Rate
-	}
-	if o.Username != "" && o.Password != "" {
-		// Authenticated rate limit is 20 requests per minute.
-		return time.Minute / 20
-	}
-	// Unauthenticated rate limit is 5 requests per minute.
-	return time.Minute / 5
-}
-
 func (o Options) earliest() time.Time {
 	if !o.Earliest.IsZero() {
 		return o.Earliest
