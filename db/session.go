@@ -143,6 +143,7 @@ func (s *Session) CreateIndexIfNotExists(table, index string) error {
 		if err != nil {
 			return err
 		}
+		s.Db().Table(table).IndexWait(index).Run(s.Session)
 	}
 	return nil
 }

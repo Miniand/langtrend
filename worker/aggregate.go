@@ -18,7 +18,7 @@ func periodTypes() []period.Perioder {
 	}
 }
 
-var aggregateRateLimiter = rate.New(1, time.Minute)
+var aggregateRateLimiter = rate.New(6, time.Hour)
 
 func (w *Worker) UpdateLanguageTotal(kind, language string, per period.Perioder) error {
 	count, err := w.Options.Db.UpdateLanguageCountForPeriod(kind, language, per)
