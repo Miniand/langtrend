@@ -24,6 +24,7 @@ func (s *Session) LanguageList(table string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cur.Close()
 	languages := []string{}
 	err = cur.All(&languages)
 	return languages, err
@@ -50,14 +51,38 @@ func (s *Session) CreatePushedTable() error {
 }
 
 func (s *Session) SaveLanguageCount(
-	table, language string,
+	kind, language string,
 	date time.Time,
 	count int,
 ) error {
-	_, err := s.Db().Table(table).Insert(LanguageDateCount{
+	// Update total.
+	_, err := s.Db().Table(kind).Insert(LanguageDateCount{
 		Language: language,
 		Date:     date,
 		Count:    count,
+	}).RunWrite(s.Session)
+	if err != nil {
+		return err
+	}
+	// Mark aggregate totals for this language and grand as dirty.
+	_, err = s.Db().Table(AggregateTable(kind)).Filter(
+		gorethink.Row.Field("language").Eq(language).Or(
+			gorethink.Row.Field("language").Eq(GrandTotalField)).And(
+			gorethink.Row.Field("start").Le(date)).And(
+			gorethink.Row.Field("end").Gt(date))).
+		Update(map[string]interface{}{
+		"total_dirty": true,
+	}).RunWrite(s.Session)
+	if err != nil {
+		return err
+	}
+	// Mark aggregate ratios and ranks for everything as dirty.
+	_, err = s.Db().Table(AggregateTable(kind)).Filter(
+		gorethink.Row.Field("start").Le(date).And(
+			gorethink.Row.Field("end").Gt(date))).
+		Update(map[string]interface{}{
+		"ratio_dirty": true,
+		"rank_dirty":  true,
 	}).RunWrite(s.Session)
 	return err
 }
@@ -74,6 +99,7 @@ func (s *Session) LastLanguageCount(kind string) (
 	if err != nil || cur.IsNil() {
 		return
 	}
+	defer cur.Close()
 	found = true
 	err = cur.One(&ldc)
 	return
@@ -91,58 +117,35 @@ func (s *Session) FirstLanguageCount(kind string) (
 	if err != nil || cur.IsNil() {
 		return
 	}
+	defer cur.Close()
 	found = true
 	err = cur.One(&ldc)
 	return
 }
 
-func (s *Session) LanguageCounts(language, kind string) ([]LanguageDateCount, error) {
-	cur, err := s.Db().Table(kind).GetAllByIndex("language", language).OrderBy("date").Run(s.Session)
+func (s *Session) EarliestCounts(table string) ([]LanguageDateCount, error) {
+	cur, err := s.Db().Table(table).Group("language").Min("date").
+		Ungroup().Map(func(row gorethink.Term) interface{} {
+		return row.Field("reduction")
+	}).OrderBy("language").Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
+	defer cur.Close()
 	counts := []LanguageDateCount{}
 	err = cur.All(&counts)
 	return counts, err
 }
 
-func (s *Session) LanguageCountsByWeek(language, kind string) ([]LanguageDateCount, error) {
-	cur, err := s.Db().Table(kind).GetAllByIndex("language", language).Group(
-		func(row gorethink.Term) interface{} {
-			return row.Field("date").ToEpochTime().Div(604000).CoerceTo("STRING").Split(".").Nth(0).CoerceTo("NUMBER")
-		}).Sum("count").Ungroup().Map(func(row gorethink.Term) interface{} {
-		return map[string]interface{}{
-			"language": language,
-			"date":     gorethink.EpochTime(row.Field("group").Mul(604000)),
-			"count":    row.Field("reduction"),
-		}
-	}).OrderBy("date").Run(s.Session)
+func (s *Session) LatestCounts(table string) ([]LanguageDateCount, error) {
+	cur, err := s.Db().Table(table).Group("language").Max("date").
+		Ungroup().Map(func(row gorethink.Term) interface{} {
+		return row.Field("reduction")
+	}).OrderBy("language").Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
-	counts := []LanguageDateCount{}
-	err = cur.All(&counts)
-	return counts, err
-}
-func (s *Session) LanguageCountsByMonth(language, kind string) ([]LanguageDateCount, error) {
-	cur, err := s.Db().Table(kind).GetAllByIndex("language", language).Group(
-		func(row gorethink.Term) interface{} {
-			return gorethink.Time(
-				row.Field("date").Year(),
-				row.Field("date").Month(),
-				1,
-				"Z",
-			)
-		}).Sum("count").Ungroup().Map(func(row gorethink.Term) interface{} {
-		return map[string]interface{}{
-			"language": language,
-			"date":     row.Field("group"),
-			"count":    row.Field("reduction"),
-		}
-	}).OrderBy("date").Run(s.Session)
-	if err != nil {
-		return nil, err
-	}
+	defer cur.Close()
 	counts := []LanguageDateCount{}
 	err = cur.All(&counts)
 	return counts, err

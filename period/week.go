@@ -10,7 +10,7 @@ type Week struct {
 }
 
 func (w Week) Identifier() string {
-	return "quarter"
+	return "week"
 }
 
 func (w Week) Start() time.Time {

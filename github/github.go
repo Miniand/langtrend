@@ -9,23 +9,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beefsack/go-rate-limiter"
+	"github.com/beefsack/go-rate"
 )
 
 const (
 	DateFormat = "2006-01-02"
 )
 
-var rateLimiters = map[string]*rate_limiter.RateLimiter{}
+var rateLimiters = map[string]*rate.RateLimiter{}
 
-func rateLimiter(name string) *rate_limiter.RateLimiter {
+func rateLimiter(name string) *rate.RateLimiter {
 	rl, ok := rateLimiters[name]
 	if !ok {
 		limit := 20
 		if name == "" {
 			limit = 5
 		}
-		rl = rate_limiter.New(limit, time.Minute)
+		rl = rate.New(limit, time.Minute)
 		rateLimiters[name] = rl
 	}
 	return rl

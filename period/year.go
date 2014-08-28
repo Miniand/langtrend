@@ -9,7 +9,7 @@ type Year struct {
 }
 
 func (y Year) Identifier() string {
-	return "month"
+	return "year"
 }
 
 func (y Year) Start() time.Time {

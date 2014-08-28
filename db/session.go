@@ -57,12 +57,21 @@ func (s *Session) Migrate() error {
 	if err := s.CreateDatabase(); err != nil {
 		return err
 	}
-	// Create languages table
+	// Create created table
 	if err := s.CreateCreatedTable(); err != nil {
 		return err
 	}
 	// Create pushed table
 	if err := s.CreatePushedTable(); err != nil {
+		return err
+	}
+	// Create created_aggregate table
+	if err := s.CreateCreatedAggregateTable(); err != nil {
+		return err
+	}
+	// Create pushed_aggregate table
+	if err := s.CreatePushedAggregateTable(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -95,6 +104,7 @@ func (s *Session) CreateTableIfNotExists(table string) error {
 	if err != nil {
 		return err
 	}
+	defer cur.Close()
 	tableName := ""
 	found := false
 	for cur.Next(&tableName) {
@@ -118,6 +128,7 @@ func (s *Session) CreateIndexIfNotExists(table, index string) error {
 	if err != nil {
 		return err
 	}
+	defer cur.Close()
 	indexName := ""
 	found := false
 	for cur.Next(&indexName) {

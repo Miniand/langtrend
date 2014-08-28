@@ -12,20 +12,16 @@ func New(options Options) *Worker {
 
 func (w *Worker) Run() {
 	for {
-		// Fetch created count for the next language in the queue.
-		ran, err := w.FetchNextDateVal("created")
+		ran, err := w.RunAggregate()
 		if err != nil {
-			log.Printf("error fetching created, %s", err)
-			continue
+			log.Printf("error running aggregate, %s", err)
 		}
 		if ran {
 			continue
 		}
-		// Fetch pushed count for the next language in the queue.
-		ran, err = w.FetchNextDateVal("pushed")
+		ran, err = w.RunFetch()
 		if err != nil {
-			log.Printf("error fetching pushed, %s", err)
-			continue
+			log.Printf("error running fetch, %s", err)
 		}
 		if ran {
 			continue

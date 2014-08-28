@@ -8,6 +8,17 @@ import (
 	"github.com/Miniand/langtrend/github"
 )
 
+func (w *Worker) RunFetch() (ran bool, err error) {
+	// Fetch created count for the next language in the queue.
+	ran, err = w.FetchNextDateVal("created")
+	if ran || err != nil {
+		return
+	}
+	// Fetch pushed count for the next language in the queue.
+	ran, err = w.FetchNextDateVal("pushed")
+	return
+}
+
 func (w *Worker) FetchDateVal(kind, language string, date time.Time) error {
 	count, err := github.GetCountOnDateForLang(date, kind, language,
 		w.Options.Username, w.Options.Password)

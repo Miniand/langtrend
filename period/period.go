@@ -29,6 +29,10 @@ func (b base) Reference() time.Time {
 func Types() []Perioder {
 	return []Perioder{
 		&Day{},
+		&Week{},
+		&Month{},
+		&Quarter{},
+		&Year{},
 	}
 }
 
