@@ -14,10 +14,33 @@ import (
 func Language(opts options.Options) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
+		query := r.URL.Query()
+		axisPeriod := query.Get("period")
+		if axisPeriod == "" {
+			axisPeriod = "month"
+		}
+		kind := query.Get("kind")
+		if kind == "" {
+			kind = "created"
+		}
 		languages := strings.Split(vars["language"], ",")
-		counts := [][]db.LanguageDateCount{}
+		if len(languages) == 1 && languages[0] == "" {
+			languages = []string{}
+			langs, err := opts.Db.TopRanked(kind, axisPeriod)
+			if err != nil {
+				log.Fatalf("could not get top ranked, %s", err)
+			}
+			until := 10
+			if l := len(langs); l < until {
+				until = l
+			}
+			for i := 0; i < until; i++ {
+				languages = append(languages, langs[i].Language)
+			}
+		}
+		counts := [][]db.Aggregate{}
 		for _, l := range languages {
-			c, err := opts.Db.LanguageCountsByMonth(l, "created")
+			c, err := opts.Db.AggregatesForLanguageAndType(l, kind, axisPeriod)
 			if err != nil {
 				log.Fatalf("could not get language counts for %s, %v",
 					vars["language"], err)

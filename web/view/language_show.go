@@ -10,6 +10,7 @@ import (
 
 	"github.com/Miniand/langtrend/db"
 	"github.com/Miniand/langtrend/github"
+	"github.com/Miniand/langtrend/period"
 )
 
 var languageShowMutex = &sync.Mutex{}
@@ -20,13 +21,14 @@ var languageShowT = `{{template "header" .HeaderData}}
 		<div id="legend" style="position:absolute;"></div>
 	</div>
 	<canvas data-chart="Line" data-chart-legend="#legend"
+		data-chart-options="{&quot;scaleBeginAtZero&quot;:true}"
 		data-chart-data="{{.ChartData}}"></canvas>
 </div>
 {{template "footer"}}`
 
 type LanguageShowData struct {
 	Name       string
-	Counts     [][]db.LanguageDateCount
+	Counts     [][]db.Aggregate
 	ChartData  string
 	HeaderData HeaderData
 }
@@ -44,15 +46,20 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 	languageShowMutex.Unlock()
 	labels := make([]string, len(data.Counts[0]))
 	datasets := make([]ChartData, len(data.Counts))
+	per, err := period.FromIdentifier(data.Counts[0][0].Type)
+	if err != nil {
+		return fmt.Errorf("could not get period, %s", err)
+	}
 	for i, lang := range data.Counts {
 		data := make([]float64, len(lang))
 		for j, count := range lang {
 			if i == 0 {
-				labels[j] = count.Date.Format("Jan 2006")
+				per.SetReference(count.Start)
+				labels[j] = per.String()
 			}
 			if j == 0 {
 				datasets[i].Label = count.Language
-				col := palette.WebSafe[i*28].(color.RGBA)
+				col := palette.WebSafe[(i*28)%216].(color.RGBA)
 				if c, ok := github.LanguageColors[count.Language]; ok {
 					col = c
 				}
@@ -67,7 +74,7 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 				datasets[i].PointHighlightStroke = fmt.Sprintf(
 					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
 			}
-			data[j] = float64(count.Count)
+			data[j] = count.Ratio * 100
 		}
 		datasets[i].Data = data
 	}

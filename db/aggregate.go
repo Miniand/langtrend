@@ -291,6 +291,49 @@ func (s *Session) FindAggregate(kind, language string,
 	return
 }
 
+func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
+	cur, err := s.Db().Table(AggregateTable(kind)).Filter(
+		gorethink.Row.Field("type").Eq(perType).And(
+			gorethink.Row.Field("rank").Gt(0))).
+		OrderBy(gorethink.Desc("start")).Limit(1).Run(s.Session)
+	if err != nil {
+		return nil, err
+	}
+	a := Aggregate{}
+	if err = cur.One(&a); err != nil {
+		return nil, err
+	}
+	cur.Close()
+	cur, err = s.Db().Table(AggregateTable(kind)).Filter(
+		gorethink.Row.Field("language").Ne(GrandTotalField).And(
+			gorethink.Row.Field("type").Eq(perType)).And(
+			gorethink.Row.Field("start").Eq(a.Start))).
+		OrderBy("rank").Run(s.Session)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close()
+	agg := []Aggregate{}
+	err = cur.All(&agg)
+	return agg, err
+}
+
+func (s *Session) AggregatesForLanguageAndType(
+	language, kind, perType string,
+) ([]Aggregate, error) {
+	cur, err := s.Db().Table(AggregateTable(kind)).Filter(
+		gorethink.Row.Field("language").Eq(language).And(
+			gorethink.Row.Field("type").Eq(perType))).
+		OrderBy("start").Run(s.Session)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close()
+	agg := []Aggregate{}
+	err = cur.All(&agg)
+	return agg, err
+}
+
 func (s *Session) CreateCreatedAggregateTable() error {
 	if err := s.CreateTableIfNotExists(TableCreatedAggregate); err != nil {
 		return err
