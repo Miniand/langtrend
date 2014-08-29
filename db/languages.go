@@ -19,8 +19,12 @@ type LanguageDateCount struct {
 }
 
 func (s *Session) LanguageList(table string) ([]string, error) {
-	cur, err := s.Db().Table(table).Pluck("language").Field("language").Run(
-		s.Session)
+	// This version will eventually run much faster when gorethink is 1.14
+	/*cur, err := s.Db().Table(table).Distinct(map[string]interface{}{
+		"index": "language",
+	}).Run(s.Session)*/
+	cur, err := s.Db().Table(table).GroupByIndex("language").Count().
+		Ungroup().Field("group").Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
@@ -88,12 +92,9 @@ func (s *Session) SaveLanguageCount(
 
 func (s *Session) LastLanguageCount(kind string) (
 	ldc LanguageDateCount, found bool, err error) {
-	cur, err := s.Db().Table(kind).GroupByIndex("language").Max("date").Field("date").
+	cur, err := s.Db().Table(kind).GroupByIndex("language").Max("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
-		return map[string]interface{}{
-			"language": row.Field("group"),
-			"date":     row.Field("reduction"),
-		}
+		return row.Field("reduction")
 	}).OrderBy("date").Limit(1).Run(s.Session)
 	if err != nil || cur.IsNil() {
 		return
@@ -106,12 +107,9 @@ func (s *Session) LastLanguageCount(kind string) (
 
 func (s *Session) FirstLanguageCount(kind string) (
 	ldc LanguageDateCount, found bool, err error) {
-	cur, err := s.Db().Table(kind).GroupByIndex("language").Min("date").Field("date").
+	cur, err := s.Db().Table(kind).GroupByIndex("language").Min("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
-		return map[string]interface{}{
-			"language": row.Field("group"),
-			"date":     row.Field("reduction"),
-		}
+		return row.Field("reduction")
 	}).OrderBy(gorethink.Desc("date")).Limit(1).Run(s.Session)
 	if err != nil || cur.IsNil() {
 		return
