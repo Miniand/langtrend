@@ -1,5 +1,8 @@
 #!/bin/bash
 
+WEB_SERVERS=( web1.langtrend.com )
+WORKER_SERVERS=( worker1.langtrend.com )
+
 TMP_DIR=${TMP_DIR:-../tmp}
 
 cd $( dirname $0 )
@@ -30,25 +33,55 @@ if [ $? -ne 0 ]; then
 fi
 echo "Built web"
 
-# Stop services
-ssh root@104.131.208.206 "service langtrend-worker status | grep stop || service langtrend-worker stop &&
-service langtrend-web status | grep stop || service langtrend-web stop"
-if [ $? -ne 0 ]; then
-	echo "Error stopping services"
-	exit 1
-fi
+for i in "${WORKER_SERVERS[@]}"
+do
+	echo "Deploying to $i"
 
-# Upload binaries
-scp "${TMP_DIR}/langtrend-worker" "${TMP_DIR}/langtrend-web" root@104.131.208.206:/usr/bin/
-if [ $? -ne 0 ]; then
-	echo "Error uploading binaries"
-	exit 1
-fi
+	# Stop services
+	ssh "$i" "service langtrend-worker status | grep stop || service langtrend-worker stop"
+	if [ $? -ne 0 ]; then
+		echo "Error stopping worker server"
+		exit 1
+	fi
 
-# Start services
-ssh root@104.131.208.206 "service langtrend-worker start && service langtrend-web start"
-if [ $? -ne 0 ]; then
-	echo "Error starting services"
-	exit 1
-fi
+	# Upload binaries
+	scp "${TMP_DIR}/langtrend-worker" "$i:/usr/bin/"
+	if [ $? -ne 0 ]; then
+		echo "Error uploading binary"
+		exit 1
+	fi
+
+	# Start services
+	ssh "$i" "service langtrend-worker start"
+	if [ $? -ne 0 ]; then
+		echo "Error starting service"
+		exit 1
+	fi
+done
+
+for i in "${WEB_SERVERS[@]}"
+do
+	echo "Deploying to $i"
+
+	# Stop services
+	ssh "$i" "service langtrend-web status | grep stop || service langtrend-web stop"
+	if [ $? -ne 0 ]; then
+		echo "Error stopping web server"
+		exit 1
+	fi
+
+	# Upload binaries
+	scp "${TMP_DIR}/langtrend-web" "$i:/usr/bin/"
+	if [ $? -ne 0 ]; then
+		echo "Error uploading binary"
+		exit 1
+	fi
+
+	# Start services
+	ssh "$i" "service langtrend-web start"
+	if [ $? -ne 0 ]; then
+		echo "Error starting service"
+		exit 1
+	fi
+done
 
