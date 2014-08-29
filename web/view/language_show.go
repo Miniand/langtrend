@@ -21,7 +21,7 @@ var languageShowT = `{{template "header" .HeaderData}}
 	<div style="position:relative; top: 30px; left: 70px;">
 		<div id="legend" style="position:absolute;"></div>
 	</div>
-	<canvas data-chart="Line" data-chart-legend="#legend"
+	<canvas data-chart="{{.ChartType}}" data-chart-legend="#legend"
 		data-chart-options="{&quot;scaleBeginAtZero&quot;:true}"
 		data-chart-data="{{.ChartData}}"></canvas>
 </div>
@@ -33,6 +33,7 @@ type LanguageShowData struct {
 	ChartData  string
 	HeaderData HeaderData
 	Metric     string
+	ChartType  string
 }
 
 func (lsd LanguageShowData) Value(a db.Aggregate) float64 {

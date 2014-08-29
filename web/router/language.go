@@ -19,6 +19,10 @@ func Language(opts options.Options) func(w http.ResponseWriter, r *http.Request)
 		if axisPeriod == "" {
 			axisPeriod = "month"
 		}
+		chartType := query.Get("chartType")
+		if chartType == "" {
+			chartType = "Line"
+		}
 		kind := query.Get("kind")
 		if kind == "" {
 			kind = "created"
@@ -48,9 +52,10 @@ func Language(opts options.Options) func(w http.ResponseWriter, r *http.Request)
 			counts = append(counts, c)
 		}
 		if err := view.LanguageShow(w, view.LanguageShowData{
-			Name:   vars["language"],
-			Counts: counts,
-			Metric: query.Get("metric"),
+			Name:      vars["language"],
+			Counts:    counts,
+			Metric:    query.Get("metric"),
+			ChartType: chartType,
 		}); err != nil {
 			log.Fatalf("error rendering language show, %v", err)
 		}
