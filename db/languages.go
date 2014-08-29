@@ -30,24 +30,20 @@ func (s *Session) LanguageList(table string) ([]string, error) {
 	return languages, err
 }
 
-func (s *Session) CreateCreatedTable() error {
-	if err := s.CreateTableIfNotExists(TableCreated); err != nil {
+func (s *Session) CreateCountTable(kind string) error {
+	if err := s.CreateTableIfNotExists(kind); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TableCreated, "language"); err != nil {
+	if err := s.CreateIndexIfNotExists(kind, "language"); err != nil {
 		return err
 	}
-	return s.CreateIndexIfNotExists(TableCreated, "date")
-}
-
-func (s *Session) CreatePushedTable() error {
-	if err := s.CreateTableIfNotExists(TablePushed); err != nil {
+	if err := s.CreateIndexIfNotExists(kind, "date"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TablePushed, "language"); err != nil {
+	if err := s.CreateIndexIfNotExists(kind, "language", "date"); err != nil {
 		return err
 	}
-	return s.CreateIndexIfNotExists(TablePushed, "date")
+	return nil
 }
 
 func (s *Session) SaveLanguageCount(
@@ -65,12 +61,14 @@ func (s *Session) SaveLanguageCount(
 		return err
 	}
 	// Mark aggregate totals for this language and grand as dirty.
-	_, err = s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("language").Eq(language).Or(
-			gorethink.Row.Field("language").Eq(GrandTotalField)).And(
-			gorethink.Row.Field("start").Le(date)).And(
-			gorethink.Row.Field("end").Gt(date))).
-		Update(map[string]interface{}{
+	_, err = s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+		"language",
+		language,
+		GrandTotalField,
+	).Filter(gorethink.Expr(date).During(
+		gorethink.Row.Field("start"),
+		gorethink.Row.Field("end"),
+	)).Update(map[string]interface{}{
 		"total_dirty": true,
 	}).RunWrite(s.Session)
 	if err != nil {
@@ -78,9 +76,10 @@ func (s *Session) SaveLanguageCount(
 	}
 	// Mark aggregate ratios and ranks for everything as dirty.
 	_, err = s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("start").Le(date).And(
-			gorethink.Row.Field("end").Gt(date))).
-		Update(map[string]interface{}{
+		gorethink.Expr(date).During(
+			gorethink.Row.Field("start"),
+			gorethink.Row.Field("end"),
+		)).Update(map[string]interface{}{
 		"ratio_dirty": true,
 		"rank_dirty":  true,
 	}).RunWrite(s.Session)
@@ -89,7 +88,7 @@ func (s *Session) SaveLanguageCount(
 
 func (s *Session) LastLanguageCount(kind string) (
 	ldc LanguageDateCount, found bool, err error) {
-	cur, err := s.Db().Table(kind).Group("language").Max("date").Field("date").
+	cur, err := s.Db().Table(kind).GroupByIndex("language").Max("date").Field("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return map[string]interface{}{
 			"language": row.Field("group"),
@@ -107,7 +106,7 @@ func (s *Session) LastLanguageCount(kind string) (
 
 func (s *Session) FirstLanguageCount(kind string) (
 	ldc LanguageDateCount, found bool, err error) {
-	cur, err := s.Db().Table(kind).Group("language").Min("date").Field("date").
+	cur, err := s.Db().Table(kind).GroupByIndex("language").Min("date").Field("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return map[string]interface{}{
 			"language": row.Field("group"),
@@ -124,7 +123,7 @@ func (s *Session) FirstLanguageCount(kind string) (
 }
 
 func (s *Session) EarliestCounts(table string) ([]LanguageDateCount, error) {
-	cur, err := s.Db().Table(table).Group("language").Min("date").
+	cur, err := s.Db().Table(table).GroupByIndex("language").Min("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
 	}).OrderBy("language").Run(s.Session)
@@ -138,7 +137,7 @@ func (s *Session) EarliestCounts(table string) ([]LanguageDateCount, error) {
 }
 
 func (s *Session) LatestCounts(table string) ([]LanguageDateCount, error) {
-	cur, err := s.Db().Table(table).Group("language").Max("date").
+	cur, err := s.Db().Table(table).GroupByIndex("language").Max("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
 	}).OrderBy("language").Run(s.Session)

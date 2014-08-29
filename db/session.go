@@ -2,6 +2,7 @@ package db
 
 import (
 	"log"
+	"strings"
 
 	"github.com/dancannon/gorethink"
 )
@@ -58,19 +59,19 @@ func (s *Session) Migrate() error {
 		return err
 	}
 	// Create created table
-	if err := s.CreateCreatedTable(); err != nil {
+	if err := s.CreateCountTable(TableCreated); err != nil {
 		return err
 	}
 	// Create pushed table
-	if err := s.CreatePushedTable(); err != nil {
+	if err := s.CreateCountTable(TablePushed); err != nil {
 		return err
 	}
 	// Create created_aggregate table
-	if err := s.CreateCreatedAggregateTable(); err != nil {
+	if err := s.CreateAggregateTable(TableCreated); err != nil {
 		return err
 	}
 	// Create pushed_aggregate table
-	if err := s.CreatePushedAggregateTable(); err != nil {
+	if err := s.CreateAggregateTable(TablePushed); err != nil {
 		return err
 	}
 	return nil
@@ -123,27 +124,47 @@ func (s *Session) CreateTableIfNotExists(table string) error {
 	return nil
 }
 
-func (s *Session) CreateIndexIfNotExists(table, index string) error {
+func IndexName(indexes ...string) string {
+	return strings.Join(indexes, ":")
+}
+
+func (s *Session) CreateIndexIfNotExists(table string, indexes ...string) error {
 	cur, err := s.Db().Table(table).IndexList().Run(s.Session)
 	if err != nil {
 		return err
 	}
 	defer cur.Close()
-	indexName := ""
+	indexName := IndexName(indexes...)
+	n := ""
 	found := false
-	for cur.Next(&indexName) {
-		if indexName == index {
+	for cur.Next(&n) {
+		if n == indexName {
 			found = true
 			break
 		}
 	}
 	if !found {
-		log.Printf("creating index %s.%s\n", table, index)
-		_, err := s.Db().Table(table).IndexCreate(index).RunWrite(s.Session)
-		if err != nil {
-			return err
+		log.Printf("creating index %s.%s\n", table, indexName)
+		if len(indexes) == 1 {
+			_, err := s.Db().Table(table).IndexCreate(indexes[0]).RunWrite(
+				s.Session)
+			if err != nil {
+				return nil
+			}
+		} else {
+			_, err := s.Db().Table(table).IndexCreateFunc(indexName,
+				func(row gorethink.Term) interface{} {
+					index := make([]interface{}, len(indexes))
+					for i, in := range indexes {
+						index[i] = row.Field(in)
+					}
+					return index
+				}).RunWrite(s.Session)
+			if err != nil {
+				return err
+			}
 		}
-		s.Db().Table(table).IndexWait(index).Run(s.Session)
+		s.Db().Table(table).IndexWait(indexName).Run(s.Session)
 	}
 	return nil
 }

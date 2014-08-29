@@ -9,9 +9,7 @@ import (
 )
 
 const (
-	TableCreatedAggregate = "created_aggregate"
-	TablePushedAggregate  = "pushed_aggregate"
-	GrandTotalField       = "GRAND_TOTAL"
+	GrandTotalField = "GRAND_TOTAL"
 )
 
 type Aggregate struct {
@@ -41,8 +39,9 @@ func AggregateTable(kind string) string {
 }
 
 func (s *Session) EarliestAggregates(kind string) ([]Aggregate, error) {
-	cur, err := s.Db().Table(AggregateTable(kind)).Group("language", "type").
-		Min("start").Ungroup().Map(func(row gorethink.Term) interface{} {
+	cur, err := s.Db().Table(AggregateTable(kind)).GroupByIndex(
+		IndexName("language", "type")).Min("start").Ungroup().
+		Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
 	}).OrderBy("language", "type").Run(s.Session)
 	if err != nil {
@@ -55,8 +54,9 @@ func (s *Session) EarliestAggregates(kind string) ([]Aggregate, error) {
 }
 
 func (s *Session) LatestAggregates(kind string) ([]Aggregate, error) {
-	cur, err := s.Db().Table(AggregateTable(kind)).Group("language", "type").
-		Max("start").Ungroup().Map(func(row gorethink.Term) interface{} {
+	cur, err := s.Db().Table(AggregateTable(kind)).GroupByIndex(
+		IndexName("language", "type")).Max("start").Ungroup().
+		Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
 	}).OrderBy("language", "type").Run(s.Session)
 	if err != nil {
@@ -69,8 +69,10 @@ func (s *Session) LatestAggregates(kind string) ([]Aggregate, error) {
 }
 
 func (s *Session) TotalDirtyAggregates(kind string) ([]Aggregate, error) {
-	cur, err := s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("total_dirty").Eq(true)).Run(s.Session)
+	cur, err := s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+		"total_dirty",
+		true,
+	).Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
@@ -170,10 +172,10 @@ func (s *Session) AggregatesForPeriod(
 	kind string,
 	per period.Perioder,
 ) ([]Aggregate, error) {
-	cur, err := s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("type").Eq(per.Identifier()).And(
-			gorethink.Row.Field("start").Eq(per.Start()))).
-		OrderBy(gorethink.Desc("total")).Run(s.Session)
+	cur, err := s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+		IndexName("type", "start"),
+		[]interface{}{per.Identifier(), per.Start()},
+	).OrderBy(gorethink.Desc("total")).Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
@@ -235,9 +237,14 @@ func (s *Session) UpdateRanksForPeriod(kind string, per period.Perioder) error {
 
 func (s *Session) LanguageCountForPeriod(kind, language string,
 	start, end time.Time) (int, error) {
-	cur, err := s.Db().Table(kind).GetAllByIndex("language", language).Filter(
-		gorethink.Row.Field("date").Ge(start).And(
-			gorethink.Row.Field("date").Lt(end))).Sum("count").Run(s.Session)
+	cur, err := s.Db().Table(kind).Between(
+		[]interface{}{language, start},
+		[]interface{}{language, end.Add(-time.Second)},
+		gorethink.BetweenOpts{
+			Index:      IndexName("language", "date"),
+			RightBound: "closed",
+		},
+	).Sum("count").Run(s.Session)
 	if err != nil {
 		return 0, err
 	}
@@ -268,10 +275,10 @@ func (s *Session) UpdateLanguageCountForPeriod(kind, language string,
 func (s *Session) FindAggregate(kind, language string,
 	per period.Perioder) (found bool, agg Aggregate, err error) {
 	agg = NewAggregate()
-	cur, err := s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("language").Eq(language).And(
-			gorethink.Row.Field("type").Eq(per.Identifier())).And(
-			gorethink.Row.Field("start").Eq(per.Start()))).Run(s.Session)
+	cur, err := s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+		IndexName("language", "type", "start"),
+		[]interface{}{language, per.Identifier(), per.Start()},
+	).Limit(1).Run(s.Session)
 	if err != nil {
 		return
 	}
@@ -292,9 +299,11 @@ func (s *Session) FindAggregate(kind, language string,
 }
 
 func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
-	cur, err := s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("type").Eq(perType).And(
-			gorethink.Row.Field("rank").Gt(0))).
+	// Find the latest period with rankings
+	cur, err := s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+		"type",
+		perType,
+	).Filter(gorethink.Row.Field("rank").Gt(0)).
 		OrderBy(gorethink.Desc("start")).Limit(1).Run(s.Session)
 	if err != nil {
 		return nil, err
@@ -304,10 +313,11 @@ func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
 		return nil, err
 	}
 	cur.Close()
-	cur, err = s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("language").Ne(GrandTotalField).And(
-			gorethink.Row.Field("type").Eq(perType)).And(
-			gorethink.Row.Field("start").Eq(a.Start))).
+	// Get top ranked
+	cur, err = s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+		IndexName("type", "start"),
+		[]interface{}{perType, a.Start},
+	).Filter(gorethink.Row.Field("language").Ne(GrandTotalField)).
 		OrderBy("rank").Run(s.Session)
 	if err != nil {
 		return nil, err
@@ -321,10 +331,10 @@ func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
 func (s *Session) AggregatesForLanguageAndType(
 	language, kind, perType string,
 ) ([]Aggregate, error) {
-	cur, err := s.Db().Table(AggregateTable(kind)).Filter(
-		gorethink.Row.Field("language").Eq(language).And(
-			gorethink.Row.Field("type").Eq(perType))).
-		OrderBy("start").Run(s.Session)
+	cur, err := s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+		IndexName("language", "type"),
+		[]interface{}{language, perType},
+	).OrderBy("start").Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
@@ -334,40 +344,37 @@ func (s *Session) AggregatesForLanguageAndType(
 	return agg, err
 }
 
-func (s *Session) CreateCreatedAggregateTable() error {
-	if err := s.CreateTableIfNotExists(TableCreatedAggregate); err != nil {
+func (s *Session) CreateAggregateTable(kind string) error {
+	table := AggregateTable(kind)
+	if err := s.CreateTableIfNotExists(table); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TableCreatedAggregate, "language"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "language"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TableCreatedAggregate, "type"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "type"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TableCreatedAggregate, "start"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "start"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TableCreatedAggregate, "end"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "end"); err != nil {
 		return err
 	}
-	return s.CreateIndexIfNotExists(TableCreatedAggregate, "total")
-}
-
-func (s *Session) CreatePushedAggregateTable() error {
-	if err := s.CreateTableIfNotExists(TablePushedAggregate); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "total"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TablePushedAggregate, "language"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "total_dirty"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TablePushedAggregate, "type"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "language", "type"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TablePushedAggregate, "start"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "type", "start"); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TablePushedAggregate, "end"); err != nil {
+	if err := s.CreateIndexIfNotExists(table, "language", "type", "start"); err != nil {
 		return err
 	}
-	return s.CreateIndexIfNotExists(TablePushedAggregate, "total")
+	return nil
 }
