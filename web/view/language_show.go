@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/color/palette"
 	"io"
+	"math"
 	"sync"
 
 	"github.com/Miniand/langtrend/db"
@@ -31,6 +32,18 @@ type LanguageShowData struct {
 	Counts     [][]db.Aggregate
 	ChartData  string
 	HeaderData HeaderData
+	Metric     string
+}
+
+func (lsd LanguageShowData) Value(a db.Aggregate) float64 {
+	switch lsd.Metric {
+	case "total":
+		return float64(a.Total)
+	case "rank":
+		return float64(a.Rank)
+	default:
+		return math.Floor(a.Ratio*math.Pow(10, 6)) / math.Pow(10, 4)
+	}
 }
 
 func LanguageShow(w io.Writer, data LanguageShowData) error {
@@ -51,7 +64,7 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 		return fmt.Errorf("could not get period, %s", err)
 	}
 	for i, lang := range data.Counts {
-		data := make([]float64, len(lang))
+		values := make([]float64, len(lang))
 		for j, count := range lang {
 			if i == 0 {
 				per.SetReference(count.Start)
@@ -64,7 +77,7 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 					col = c
 				}
 				datasets[i].FillColor = fmt.Sprintf(
-					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 0.2)
+					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 0.0)
 				datasets[i].StrokeColor = fmt.Sprintf(
 					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
 				datasets[i].PointColor = fmt.Sprintf(
@@ -74,9 +87,9 @@ func LanguageShow(w io.Writer, data LanguageShowData) error {
 				datasets[i].PointHighlightStroke = fmt.Sprintf(
 					"rgba(%d,%d,%d,%f)", col.R, col.G, col.B, 1.0)
 			}
-			data[j] = count.Ratio * 100
+			values[j] = data.Value(count)
 		}
-		datasets[i].Data = data
+		datasets[i].Data = values
 	}
 
 	chartData := map[string]interface{}{

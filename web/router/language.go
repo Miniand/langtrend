@@ -50,6 +50,7 @@ func Language(opts options.Options) func(w http.ResponseWriter, r *http.Request)
 		if err := view.LanguageShow(w, view.LanguageShowData{
 			Name:   vars["language"],
 			Counts: counts,
+			Metric: query.Get("metric"),
 		}); err != nil {
 			log.Fatalf("error rendering language show, %v", err)
 		}
