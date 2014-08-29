@@ -23,8 +23,10 @@ func (s *Session) LanguageList(table string) ([]string, error) {
 	/*cur, err := s.Db().Table(table).Distinct(map[string]interface{}{
 		"index": "language",
 	}).Run(s.Session)*/
-	cur, err := s.Db().Table(table).GroupByIndex("language").Count().
-		Ungroup().Field("group").Run(s.Session)
+	cur, err := s.Db().Table(table).GroupByIndex("language").
+		Reduce(func(left, right gorethink.Term) interface{} {
+		return nil
+	}).Ungroup().Field("group").Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
