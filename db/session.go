@@ -91,8 +91,8 @@ func (s *Session) CreateDatabase() error {
 		}
 	}
 	if !found {
-		log.Printf("creating database %s\n", s.Options.Database)
-		_, err := gorethink.DbCreate(s.Options.Database).RunWrite(s.Session)
+		log.Printf("creating database %s\n", s.Options.database())
+		_, err := gorethink.DbCreate(s.Options.database()).RunWrite(s.Session)
 		if err != nil {
 			return err
 		}
