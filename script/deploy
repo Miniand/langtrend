@@ -1,14 +1,17 @@
 #!/bin/bash
 
 WEB_SERVERS=( web1.langtrend.com )
-WORKER_SERVERS=( worker1.langtrend.com )
+WORKER_SERVERS=(
+	worker1.langtrend.com
+	worker2.langtrend.com
+)
 
 TMP_DIR=${TMP_DIR:-../tmp}
 
 cd $( dirname $0 )
 
 # Run tests
-go test ../...
+godep go test ../...
 if [ $? -ne 0 ]; then
 	echo "Error running tests"
 	exit 1
@@ -18,7 +21,7 @@ fi
 rm -rf "${TMP_DIR}" && mkdir -p "${TMP_DIR}"
 
 # Build worker
-go build -o "${TMP_DIR}/langtrend-worker" github.com/Miniand/langtrend/worker/main
+godep go build -o "${TMP_DIR}/langtrend-worker" github.com/Miniand/langtrend/worker/main
 if [ $? -ne 0 ]; then
 	echo "Error building worker"
 	exit 1
@@ -26,7 +29,7 @@ fi
 echo "Built worker"
 
 # Build web
-go build -o "${TMP_DIR}/langtrend-web" github.com/Miniand/langtrend/web/main
+godep go build -o "${TMP_DIR}/langtrend-web" github.com/Miniand/langtrend/web/main
 if [ $? -ne 0 ]; then
 	echo "Error building web"
 	exit 1
