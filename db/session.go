@@ -105,7 +105,6 @@ func (s *Session) CreateTableIfNotExists(table string) error {
 	if err != nil {
 		return err
 	}
-	defer cur.Close()
 	tableName := ""
 	found := false
 	for cur.Next(&tableName) {
@@ -133,7 +132,6 @@ func (s *Session) CreateIndexIfNotExists(table string, indexes ...string) error 
 	if err != nil {
 		return err
 	}
-	defer cur.Close()
 	indexName := IndexName(indexes...)
 	n := ""
 	found := false

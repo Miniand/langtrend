@@ -19,18 +19,12 @@ type LanguageDateCount struct {
 }
 
 func (s *Session) LanguageList(table string) ([]string, error) {
-	// This version will eventually run much faster when gorethink is 1.14
-	/*cur, err := s.Db().Table(table).Distinct(map[string]interface{}{
-		"index": "language",
-	}).Run(s.Session)*/
-	cur, err := s.Db().Table(table).GroupByIndex("language").
-		Reduce(func(left, right gorethink.Term) interface{} {
-		return nil
-	}).Ungroup().Field("group").Run(s.Session)
+	cur, err := s.Db().Table(table).Distinct(gorethink.DistinctOpts{
+		Index: "language",
+	}).Run(s.Session)
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	languages := []string{}
 	err = cur.All(&languages)
 	return languages, err
@@ -101,7 +95,6 @@ func (s *Session) LastLanguageCount(kind string) (
 	if err != nil || cur.IsNil() {
 		return
 	}
-	defer cur.Close()
 	found = true
 	err = cur.One(&ldc)
 	return
@@ -116,7 +109,6 @@ func (s *Session) FirstLanguageCount(kind string) (
 	if err != nil || cur.IsNil() {
 		return
 	}
-	defer cur.Close()
 	found = true
 	err = cur.One(&ldc)
 	return
@@ -130,7 +122,6 @@ func (s *Session) EarliestCounts(table string) ([]LanguageDateCount, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	counts := []LanguageDateCount{}
 	err = cur.All(&counts)
 	return counts, err
@@ -144,7 +135,6 @@ func (s *Session) LatestCounts(table string) ([]LanguageDateCount, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	counts := []LanguageDateCount{}
 	err = cur.All(&counts)
 	return counts, err

@@ -47,7 +47,6 @@ func (s *Session) EarliestAggregates(kind string) ([]Aggregate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	aggregates := []Aggregate{}
 	err = cur.All(&aggregates)
 	return aggregates, err
@@ -62,7 +61,6 @@ func (s *Session) LatestAggregates(kind string) ([]Aggregate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	aggregates := []Aggregate{}
 	err = cur.All(&aggregates)
 	return aggregates, err
@@ -76,7 +74,6 @@ func (s *Session) TotalDirtyAggregates(kind string) ([]Aggregate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	aggregates := []Aggregate{}
 	err = cur.All(&aggregates)
 	return aggregates, err
@@ -96,7 +93,6 @@ func (s *Session) DirtyPeriods(kind, field string) ([]period.Perioder, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	agg := Aggregate{}
 	periods := []period.Perioder{}
 	for cur.Next(&agg) {
@@ -145,7 +141,6 @@ func (s *Session) GrandTotalForPeriod(kind string, start, end time.Time) (int, e
 	if err != nil {
 		return 0, err
 	}
-	defer cur.Close()
 	var sum int
 	err = cur.One(&sum)
 	return sum, err
@@ -179,7 +174,6 @@ func (s *Session) AggregatesForPeriod(
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	agg := []Aggregate{}
 	err = cur.All(&agg)
 	return agg, err
@@ -248,7 +242,6 @@ func (s *Session) LanguageCountForPeriod(kind, language string,
 	if err != nil {
 		return 0, err
 	}
-	defer cur.Close()
 	var sum int
 	err = cur.One(&sum)
 	return sum, err
@@ -282,7 +275,6 @@ func (s *Session) FindAggregate(kind, language string,
 	if err != nil {
 		return
 	}
-	defer cur.Close()
 	found = true
 	err = cur.One(&agg)
 	switch err {
@@ -312,7 +304,6 @@ func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
 	if err = cur.One(&a); err != nil {
 		return nil, err
 	}
-	cur.Close()
 	// Get top ranked
 	cur, err = s.Db().Table(AggregateTable(kind)).GetAllByIndex(
 		IndexName("type", "start"),
@@ -322,7 +313,6 @@ func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	agg := []Aggregate{}
 	err = cur.All(&agg)
 	return agg, err
@@ -338,7 +328,6 @@ func (s *Session) AggregatesForLanguageAndType(
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	agg := []Aggregate{}
 	err = cur.All(&agg)
 	return agg, err
