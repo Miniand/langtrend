@@ -20,6 +20,16 @@ func (w *Worker) RunFetch() (ran bool, err error) {
 }
 
 func (w *Worker) FetchDateVal(kind, language string, date time.Time) error {
+	// First we save to reserve in case of multiple workers.
+	if err := w.Options.Db.SaveLanguageCount(
+		kind,
+		language,
+		date,
+		0,
+		true,
+	); err != nil {
+		return err
+	}
 	count, err := github.GetCountOnDateForLang(date, kind, language,
 		w.Options.Username, w.Options.Password)
 	if err != nil {
@@ -27,7 +37,7 @@ func (w *Worker) FetchDateVal(kind, language string, date time.Time) error {
 	}
 	log.Printf("%d %s repos %s on %s\n",
 		count, language, kind, github.FormatDate(date))
-	return w.Options.Db.SaveLanguageCount(kind, language, date, count)
+	return w.Options.Db.SaveLanguageCount(kind, language, date, count, false)
 }
 
 func (w *Worker) FetchNextDateVal(kind string) (ran bool, err error) {
