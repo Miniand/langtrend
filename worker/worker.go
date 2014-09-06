@@ -12,14 +12,16 @@ func New(options Options) *Worker {
 
 func (w *Worker) Run() {
 	for {
-		ran, err := w.RunAggregate()
-		if err != nil {
-			log.Printf("error running aggregate, %s", err)
+		if w.Options.Aggregate {
+			ran, err := w.RunAggregate()
+			if err != nil {
+				log.Printf("error running aggregate, %s", err)
+			}
+			if ran {
+				continue
+			}
 		}
-		if ran {
-			continue
-		}
-		ran, err = w.RunFetch()
+		ran, err := w.RunFetch()
 		if err != nil {
 			log.Printf("error running fetch, %s", err)
 		}

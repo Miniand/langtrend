@@ -103,7 +103,7 @@ func (s *Session) LastLanguageCount(kind string) (
 	cur, err := s.Db().Table(kind).GroupByIndex("language").Max("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
-	}).OrderBy("date").Limit(1).Run(s.Session)
+	}).OrderBy("date").Limit(10).Sample(1).Run(s.Session)
 	if err != nil || cur.IsNil() {
 		return
 	}
@@ -117,7 +117,7 @@ func (s *Session) FirstLanguageCount(kind string) (
 	cur, err := s.Db().Table(kind).GroupByIndex("language").Min("date").
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
-	}).OrderBy(gorethink.Desc("date")).Limit(1).Run(s.Session)
+	}).OrderBy(gorethink.Desc("date")).Limit(10).Sample(1).Run(s.Session)
 	if err != nil || cur.IsNil() {
 		return
 	}

@@ -7,11 +7,12 @@ import (
 )
 
 type Options struct {
-	Db       *db.Session
-	Rate     time.Duration
-	Username string
-	Password string
-	Earliest time.Time
+	Db        *db.Session
+	Rate      time.Duration
+	Username  string
+	Password  string
+	Aggregate bool
+	Earliest  time.Time
 }
 
 func (o Options) earliest() time.Time {
