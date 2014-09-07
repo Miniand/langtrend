@@ -93,6 +93,7 @@ func (s *Session) DirtyPeriods(kind, field string) ([]period.Perioder, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cur.Close()
 	agg := Aggregate{}
 	periods := []period.Perioder{}
 	for cur.Next(&agg) {

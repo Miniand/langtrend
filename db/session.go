@@ -90,6 +90,7 @@ func (s *Session) CreateDatabase() error {
 			break
 		}
 	}
+	cur.Close()
 	if !found {
 		log.Printf("creating database %s\n", s.Options.database())
 		_, err := gorethink.DbCreate(s.Options.database()).RunWrite(s.Session)
@@ -113,6 +114,7 @@ func (s *Session) CreateTableIfNotExists(table string) error {
 			break
 		}
 	}
+	cur.Close()
 	if !found {
 		log.Printf("creating table %s\n", table)
 		_, err := s.Db().TableCreate(table).RunWrite(s.Session)
@@ -141,6 +143,7 @@ func (s *Session) CreateIndexIfNotExists(table string, indexes ...string) error 
 			break
 		}
 	}
+	cur.Close()
 	if !found {
 		log.Printf("creating index %s.%s\n", table, indexName)
 		if len(indexes) == 1 {
