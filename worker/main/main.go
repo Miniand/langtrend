@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/Miniand/langtrend/db"
@@ -24,14 +23,11 @@ func main() {
 		log.Fatal(err)
 	}
 	// Run worker.
-	rate, _ := strconv.Atoi(os.Getenv("RATE"))
 	earliest, _ := time.Parse(github.DateFormat, os.Getenv("EARLIEST"))
 	worker.New(worker.Options{
-		Db:        session,
-		Rate:      time.Duration(rate),
-		Username:  os.Getenv("GITHUB_USERNAME"),
-		Password:  os.Getenv("GITHUB_PASSWORD"),
-		Aggregate: os.Getenv("NO_AGGREGATE") == "",
-		Earliest:  earliest,
+		Db:       session,
+		Username: os.Getenv("GITHUB_USERNAME"),
+		Password: os.Getenv("GITHUB_PASSWORD"),
+		Earliest: earliest,
 	}).Run()
 }

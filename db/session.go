@@ -74,6 +74,10 @@ func (s *Session) Migrate() error {
 	if err := s.CreateAggregateTable(TablePushed); err != nil {
 		return err
 	}
+	// Create jobs table
+	if err := s.CreateJobsTable(); err != nil {
+		return err
+	}
 	return nil
 }
 

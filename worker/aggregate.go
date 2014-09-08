@@ -1,12 +1,12 @@
 package worker
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/Miniand/langtrend/db"
 	"github.com/Miniand/langtrend/period"
-	"github.com/beefsack/go-rate"
 )
 
 func periodTypes() []period.Perioder {
@@ -17,8 +17,6 @@ func periodTypes() []period.Perioder {
 		&period.Year{},
 	}
 }
-
-var aggregateRateLimiter = rate.New(1, 6*time.Hour)
 
 func (w *Worker) UpdateLanguageTotal(kind, language string, per period.Perioder) error {
 	count, err := w.Options.Db.UpdateLanguageCountForPeriod(kind, language, per)
@@ -40,11 +38,10 @@ func (w *Worker) UpdateGrandTotal(kind string, per period.Perioder) error {
 	return nil
 }
 
-func (w *Worker) RunAggregate() (ran bool, err error) {
-	if ok, _ := aggregateRateLimiter.Try(); !ok {
-		return
+func (w *Worker) Aggregate() (err error) {
+	if err := w.EnqueueAggregate(time.Now().Add(time.Hour)); err != nil {
+		return fmt.Errorf("error enqueuing next aggregate job, %s", err)
 	}
-	ran = true
 	for _, kind := range []string{"created", "pushed"} {
 		// Store the absolute earliest and latest counts for total creation
 		earliestDate := time.Time{}
@@ -53,7 +50,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 		latestCounts, err := w.Options.Db.LatestCounts(kind)
 		latestAggregates, err := w.Options.Db.LatestAggregates(kind)
 		if err != nil {
-			return true, err
+			return err
 		}
 		for _, l := range latestCounts {
 			if latestDate.IsZero() || l.Date.After(latestDate) {
@@ -73,7 +70,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 					// Create one for the latest count
 					p.SetReference(l.Date)
 					if err := w.UpdateLanguageTotal(kind, l.Language, p); err != nil {
-						return true, err
+						return err
 					}
 					continue
 				}
@@ -81,7 +78,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 				p.SetReference(existing.End)
 				for !p.Start().After(l.Date) {
 					if err := w.UpdateLanguageTotal(kind, l.Language, p); err != nil {
-						return true, err
+						return err
 					}
 					p.SetReference(p.End())
 				}
@@ -91,7 +88,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 		earliestCounts, err := w.Options.Db.EarliestCounts(kind)
 		earliestAggregates, err := w.Options.Db.EarliestAggregates(kind)
 		if err != nil {
-			return true, err
+			return err
 		}
 		for _, l := range earliestCounts {
 			if earliestDate.IsZero() || l.Date.Before(earliestDate) {
@@ -114,7 +111,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 				p.SetReference(existing.Start.Add(-time.Second))
 				for !p.End().Before(l.Date) && !p.End().Equal(l.Date) {
 					if err := w.UpdateLanguageTotal(kind, l.Language, p); err != nil {
-						return true, err
+						return err
 					}
 					p.SetReference(p.Start().Add(-time.Second))
 				}
@@ -123,7 +120,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 		// Update dirty language totals
 		totalDirty, err := w.Options.Db.TotalDirtyAggregates(kind)
 		if err != nil {
-			return true, err
+			return err
 		}
 		for _, a := range totalDirty {
 			if a.Language == db.GrandTotalField {
@@ -131,16 +128,16 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 			}
 			p, err := period.FromIdentifier(a.Type)
 			if err != nil {
-				return true, err
+				return err
 			}
 			p.SetReference(a.Start)
 			if err := w.UpdateLanguageTotal(kind, a.Language, p); err != nil {
-				return true, err
+				return err
 			}
 		}
 		// Create later grand totals
 		if earliestDate.IsZero() || latestDate.IsZero() {
-			return true, nil
+			return nil
 		}
 		for _, p := range periodTypes() {
 			found := false
@@ -156,7 +153,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 				// Create one for the latest count
 				p.SetReference(latestDate)
 				if err := w.UpdateGrandTotal(kind, p); err != nil {
-					return true, err
+					return err
 				}
 				continue
 			}
@@ -164,7 +161,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 			p.SetReference(existing.End)
 			for !p.Start().After(latestDate) {
 				if err := w.UpdateGrandTotal(kind, p); err != nil {
-					return true, err
+					return err
 				}
 				p.SetReference(p.End())
 			}
@@ -187,7 +184,7 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 			p.SetReference(existing.Start.Add(-time.Second))
 			for !p.End().Before(earliestDate) && !p.End().Equal(earliestDate) {
 				if err := w.UpdateGrandTotal(kind, p); err != nil {
-					return true, err
+					return err
 				}
 				p.SetReference(p.Start().Add(-time.Second))
 			}
@@ -199,33 +196,33 @@ func (w *Worker) RunAggregate() (ran bool, err error) {
 			}
 			p, err := period.FromIdentifier(a.Type)
 			if err != nil {
-				return true, err
+				return err
 			}
 			p.SetReference(a.Start)
 			if err := w.UpdateGrandTotal(kind, p); err != nil {
-				return true, err
+				return err
 			}
 		}
 		// Update dirty ratios
 		ratioDirty, err := w.Options.Db.RatioDirtyPeriods(kind)
 		if err != nil {
-			return true, err
+			return err
 		}
 		for _, p := range ratioDirty {
 			log.Printf("Updating ratios for %s", p)
 			if err := w.Options.Db.UpdateRatiosForPeriod(kind, p); err != nil {
-				return true, err
+				return err
 			}
 		}
 		// Update dirty ranks
 		rankDirty, err := w.Options.Db.RankDirtyPeriods(kind)
 		if err != nil {
-			return true, err
+			return err
 		}
 		for _, p := range rankDirty {
 			log.Printf("Updating ranks for %s", p)
 			if err := w.Options.Db.UpdateRanksForPeriod(kind, p); err != nil {
-				return true, err
+				return err
 			}
 		}
 	}
