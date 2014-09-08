@@ -18,7 +18,6 @@ type LanguageDateCount struct {
 	Language string    `gorethink:"language"`
 	Date     time.Time `gorethink:"date"`
 	Count    int       `gorethink:"count"`
-	Dirty    bool      `gorethink:"dirty"`
 }
 
 func (s *Session) LanguageList(table string) ([]string, error) {
@@ -53,7 +52,6 @@ func (s *Session) SaveLanguageCount(
 	kind, language string,
 	date time.Time,
 	count int,
-	dirty bool,
 ) error {
 	// Update total.
 	_, err := s.Db().Table(kind).Insert(LanguageDateCount{
@@ -61,16 +59,11 @@ func (s *Session) SaveLanguageCount(
 		Language: language,
 		Date:     date,
 		Count:    count,
-		Dirty:    dirty,
 	}, gorethink.InsertOpts{
 		Conflict: "update",
 	}).RunWrite(s.Session)
 	if err != nil {
 		return err
-	}
-	// We don't mark aggregates as dirty if this one is dirty.
-	if dirty {
-		return nil
 	}
 	// Mark aggregate totals for this language and grand as dirty.
 	_, err = s.Db().Table(AggregateTable(kind)).GetAllByIndex(

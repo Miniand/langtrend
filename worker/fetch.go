@@ -26,7 +26,6 @@ func (w *Worker) FetchDateVal(kind, language string, date time.Time) error {
 		language,
 		date,
 		0,
-		true,
 	); err != nil {
 		return err
 	}
@@ -37,7 +36,7 @@ func (w *Worker) FetchDateVal(kind, language string, date time.Time) error {
 	}
 	log.Printf("%d %s repos %s on %s\n",
 		count, language, kind, github.FormatDate(date))
-	return w.Options.Db.SaveLanguageCount(kind, language, date, count, false)
+	return w.Options.Db.SaveLanguageCount(kind, language, date, count)
 }
 
 func (w *Worker) FetchNextDateVal(kind string) (ran bool, err error) {

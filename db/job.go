@@ -1,7 +1,6 @@
 package db
 
 import (
-	"log"
 	"time"
 
 	"github.com/dancannon/gorethink"
@@ -13,14 +12,18 @@ const (
 )
 
 type Job struct {
-	Id    string      `gorethink:"id,omitempty"`
-	Type  string      `gorethink:"type"`
-	Args  interface{} `gorethink:"args"`
-	After time.Time   `gorethink:"after,omitempty"`
+	Id        string      `gorethink:"id,omitempty"`
+	Type      string      `gorethink:"type"`
+	Args      interface{} `gorethink:"args"`
+	CreatedAt time.Time   `gorethink:"createdAt"`
+	After     time.Time   `gorethink:"after"`
 }
 
 func (s *Session) Enqueue(j Job) error {
-	log.Printf("enqueuing #v", j)
+	j.CreatedAt = time.Now()
+	if j.After.IsZero() {
+		j.After = time.Now()
+	}
 	_, err := s.Db().Table(TableJobs).Insert(j, gorethink.InsertOpts{
 		Conflict: "update",
 	}).RunWrite(s.Session)
@@ -29,20 +32,22 @@ func (s *Session) Enqueue(j Job) error {
 
 func (s *Session) NextJob() (job Job, ok bool, err error) {
 	wr, err := s.Db().Table(TableJobs).Filter(
-		gorethink.Row.Field("after").Eq(nil).Or(
+		gorethink.Not(gorethink.Row.HasFields("after")).Or(
 			gorethink.Row.Field("after").Le(time.Now()))).
-		Limit(1).Delete(gorethink.DeleteOpts{
+		OrderBy("after", "createdAt").Limit(1).Delete(gorethink.DeleteOpts{
 		ReturnChanges: true,
 	}).RunWrite(s.Session)
 	if err != nil {
 		return
 	}
-	if wr.Deleted == 0 {
+	if wr.Changes == nil || len(wr.Changes) == 0 {
 		ok = false
 		return
 	}
-	log.Printf("Fetched job %#v", wr)
-	err = encoding.Decode(&job, wr.OldValue)
+	if err = encoding.Decode(&job, wr.Changes[0].OldValue); err != nil {
+		return
+	}
+	ok = true
 	return
 }
 

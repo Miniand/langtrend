@@ -51,7 +51,6 @@ func (w *Worker) EnqueueAggregate(after time.Time) error {
 }
 
 func (w *Worker) RunJob(job db.Job) error {
-	log.Printf("Running %v", job)
 	switch job.Type {
 	case JobCreateGHJobs:
 		return w.RunCreateGHJobs()
@@ -78,6 +77,7 @@ func prevDay(t time.Time) time.Time {
 }
 
 func (w *Worker) RunCreateGHJobs() error {
+	log.Print("Creating GitHub jobs, this may take some time")
 	if err := w.EnqueueCreateGHJobs(time.Now().Add(6 * time.Hour)); err != nil {
 		return fmt.Errorf("error enqueuing next createGHJobs job, %s", err)
 	}
@@ -143,5 +143,6 @@ func (w *Worker) RunCreateGHJobs() error {
 			cur = prevDay(cur)
 		}
 	}
+	log.Print("Created GitHub jobs")
 	return nil
 }
