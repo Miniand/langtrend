@@ -64,11 +64,5 @@ func (s *Session) CreateJobsTable() error {
 	if err := s.CreateTableIfNotExists(TableJobs); err != nil {
 		return err
 	}
-	if err := s.CreateIndexIfNotExists(TableJobs, "type"); err != nil {
-		return err
-	}
-	if err := s.CreateIndexIfNotExists(TableJobs, "after"); err != nil {
-		return err
-	}
 	return nil
 }
