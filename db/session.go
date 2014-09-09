@@ -78,6 +78,10 @@ func (s *Session) Migrate() error {
 	if err := s.CreateJobsTable(); err != nil {
 		return err
 	}
+	// Create started_jobs table
+	if err := s.CreateStartedJobsTable(); err != nil {
+		return err
+	}
 	return nil
 }
 

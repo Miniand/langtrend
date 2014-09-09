@@ -8,7 +8,10 @@ import (
 )
 
 const (
-	TableJobs = "jobs"
+	TableJobs        = "jobs"
+	TableStartedJobs = "started_jobs"
+	JobStateRunning  = "running"
+	JobStateFailed   = "failed"
 )
 
 type Job struct {
@@ -17,6 +20,13 @@ type Job struct {
 	Args      interface{} `gorethink:"args"`
 	CreatedAt time.Time   `gorethink:"createdAt"`
 	After     time.Time   `gorethink:"after"`
+}
+
+type StartedJob struct {
+	Id    string `gorethink:"id,omitempty"`
+	State string `gorethink:"state"`
+	Error string `gorethink:"error"`
+	Job   Job    `gorethink:"job"`
 }
 
 func (s *Session) Enqueue(j Job) error {
@@ -30,7 +40,7 @@ func (s *Session) Enqueue(j Job) error {
 	return err
 }
 
-func (s *Session) NextJob() (job Job, ok bool, err error) {
+func (s *Session) NextJob() (job Job, ok bool, startedJobId string, err error) {
 	wr, err := s.Db().Table(TableJobs).Filter(
 		gorethink.Not(gorethink.Row.HasFields("after")).Or(
 			gorethink.Row.Field("after").Le(time.Now()))).
@@ -48,7 +58,35 @@ func (s *Session) NextJob() (job Job, ok bool, err error) {
 		return
 	}
 	ok = true
+	startedJobId, err = s.JobRunning(job)
 	return
+}
+
+func (s *Session) JobRunning(job Job) (startedJobId string, err error) {
+	wr, err := s.Db().Table(TableStartedJobs).Insert(StartedJob{
+		State: JobStateRunning,
+		Job:   job,
+	}).RunWrite(s.Session)
+	if err != nil {
+		return
+	}
+	startedJobId = wr.GeneratedKeys[0]
+	return
+}
+
+func (s *Session) JobFailed(startedJobId string, err error) error {
+	_, err = s.Db().Table(TableStartedJobs).Get(startedJobId).Update(
+		map[string]interface{}{
+			"state": JobStateFailed,
+			"error": err.Error(),
+		}).RunWrite(s.Session)
+	return err
+}
+
+func (s *Session) JobComplete(startedJobId string) error {
+	_, err := s.Db().Table(TableStartedJobs).Get(startedJobId).Delete().
+		RunWrite(s.Session)
+	return err
 }
 
 func (s *Session) WaitingJobCount() (count int, err error) {
@@ -62,6 +100,13 @@ func (s *Session) WaitingJobCount() (count int, err error) {
 
 func (s *Session) CreateJobsTable() error {
 	if err := s.CreateTableIfNotExists(TableJobs); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Session) CreateStartedJobsTable() error {
+	if err := s.CreateTableIfNotExists(TableStartedJobs); err != nil {
 		return err
 	}
 	return nil
