@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -39,9 +38,7 @@ func (w *Worker) UpdateGrandTotal(kind string, per period.Perioder) error {
 }
 
 func (w *Worker) Aggregate() (err error) {
-	if err := w.EnqueueAggregate(time.Now().Add(time.Hour)); err != nil {
-		return fmt.Errorf("error enqueuing next aggregate job, %s", err)
-	}
+	defer w.EnqueueAggregate(time.Now().Add(time.Hour))
 	for _, kind := range []string{"created", "pushed"} {
 		// Store the absolute earliest and latest counts for total creation
 		earliestDate := time.Time{}

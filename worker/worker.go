@@ -27,7 +27,7 @@ func (w *Worker) Run() {
 		}
 	}
 	for {
-		job, ok, startedJobId, err := w.Options.Db.NextJob()
+		job, ok, err := w.Options.Db.NextJob()
 		if err != nil {
 			log.Printf("Error fetching next job, %s, waiting 10 seconds", err)
 			time.Sleep(10 * time.Second)
@@ -38,12 +38,12 @@ func (w *Worker) Run() {
 			continue
 		}
 		if err := w.RunJob(job); err == nil {
-			if err := w.Options.Db.JobComplete(startedJobId); err != nil {
+			if err := w.Options.Db.JobComplete(job.Id); err != nil {
 				log.Printf("Error marking job complete, %s", err)
 			}
 		} else {
 			log.Printf("Error running job, %s", err)
-			if err := w.Options.Db.JobFailed(startedJobId, err); err != nil {
+			if err := w.Options.Db.JobFailed(job.Id, err); err != nil {
 				log.Printf("Error marking job failed, %s", err)
 			}
 		}
