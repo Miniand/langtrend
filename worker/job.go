@@ -80,7 +80,7 @@ func (w *Worker) RunCreateGHJobs() error {
 	log.Print("Creating GitHub jobs, this may take some time")
 	defer w.EnqueueCreateGHJobs(time.Now().Add(6 * time.Hour))
 	maxDate := floorDay(time.Now().Add(2 * -24 * time.Hour))
-	minDate := w.Options.Earliest
+	minDate := w.Options.earliest()
 	for _, kind := range []string{"created", "pushed"} {
 		// Prepare data based on earliest and latest language dates.
 		earliestCounts, err := w.Options.Db.EarliestCounts(kind)

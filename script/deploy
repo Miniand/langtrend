@@ -3,6 +3,13 @@
 WEB_SERVERS=( web1.langtrend.com )
 WORKER_SERVERS=(
 	worker1.langtrend.com
+	worker2.langtrend.com
+	worker3.langtrend.com
+	worker4.langtrend.com
+	worker5.langtrend.com
+	worker6.langtrend.com
+	worker7.langtrend.com
+	worker8.langtrend.com
 )
 
 TMP_DIR=${TMP_DIR:-../tmp}
