@@ -28,5 +28,5 @@ func (w Week) Num() int {
 }
 
 func (w Week) String() string {
-	return fmt.Sprintf("W%d %d", w.Num(), w.reference.Year())
+	return fmt.Sprintf("W%d %d", w.Num(), w.End().AddDate(0, 0, -1).Year())
 }
