@@ -124,14 +124,18 @@ func (s *Session) SaveAggregate(kind string, aggregate Aggregate) (
 
 func (s *Session) InsertAggregate(kind string, aggregate Aggregate) (
 	gorethink.WriteResponse, error) {
-	return s.Db().Table(AggregateTable(kind)).Insert(aggregate).
-		RunWrite(s.Session)
+	return s.Db().Table(AggregateTable(kind)).
+		Insert(aggregate, gorethink.InsertOpts{
+		Durability: "soft",
+	}).RunWrite(s.Session)
 }
 
 func (s *Session) UpdateAggregate(kind, id string, aggregate Aggregate) (
 	gorethink.WriteResponse, error) {
-	return s.Db().Table(AggregateTable(kind)).Get(id).Update(aggregate).
-		RunWrite(s.Session)
+	return s.Db().Table(AggregateTable(kind)).Get(id).
+		Update(aggregate, gorethink.UpdateOpts{
+		Durability: "soft",
+	}).RunWrite(s.Session)
 }
 
 func (s *Session) GrandTotalForPeriod(kind string, start, end time.Time) (int, error) {
