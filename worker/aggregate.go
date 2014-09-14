@@ -21,8 +21,8 @@ func (w *Worker) UpdateLanguageTotal(kind, language string, per period.Perioder)
 	if err != nil {
 		return err
 	}
-	log.Printf("%d %s repos created during %s",
-		count, language, per)
+	log.Printf("%d %s repos %s during %s",
+		count, language, kind, per)
 	return nil
 }
 
@@ -31,8 +31,8 @@ func (w *Worker) UpdateGrandTotal(kind string, per period.Perioder) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("Grand total of %d repos created during %s",
-		count, per)
+	log.Printf("Grand total of %d repos %s during %s",
+		count, kind, per)
 	return nil
 }
 
