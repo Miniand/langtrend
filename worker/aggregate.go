@@ -77,6 +77,10 @@ func (w *Worker) Aggregate() (err error) {
 					if err := w.UpdateLanguageTotal(kind, l.Language, p); err != nil {
 						return err
 					}
+					pStart := p.Start()
+					if pStart.After(latestDate) {
+						latestDate = pStart
+					}
 					p.SetReference(p.End())
 				}
 			}
@@ -109,6 +113,10 @@ func (w *Worker) Aggregate() (err error) {
 				for !p.End().Before(l.Date) && !p.End().Equal(l.Date) {
 					if err := w.UpdateLanguageTotal(kind, l.Language, p); err != nil {
 						return err
+					}
+					pStart := p.Start()
+					if pStart.Before(earliestDate) {
+						earliestDate = pStart
 					}
 					p.SetReference(p.Start().Add(-time.Second))
 				}
