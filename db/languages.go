@@ -27,6 +27,7 @@ func (s *Session) LanguageList(table string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cur.Close()
 	languages := []string{}
 	err = cur.All(&languages)
 	return languages, err
@@ -97,7 +98,11 @@ func (s *Session) LastLanguageCount(kind string) (
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
 	}).OrderBy("date").Limit(10).Sample(1).Run(s.Session)
-	if err != nil || cur.IsNil() {
+	if err != nil {
+		return
+	}
+	defer cur.Close()
+	if cur.IsNil() {
 		return
 	}
 	found = true
@@ -111,7 +116,11 @@ func (s *Session) FirstLanguageCount(kind string) (
 		Ungroup().Map(func(row gorethink.Term) interface{} {
 		return row.Field("reduction")
 	}).OrderBy(gorethink.Desc("date")).Limit(10).Sample(1).Run(s.Session)
-	if err != nil || cur.IsNil() {
+	if err != nil {
+		return
+	}
+	defer cur.Close()
+	if cur.IsNil() {
 		return
 	}
 	found = true
@@ -127,6 +136,7 @@ func (s *Session) EarliestCounts(table string) ([]LanguageDateCount, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cur.Close()
 	counts := []LanguageDateCount{}
 	err = cur.All(&counts)
 	return counts, err
@@ -140,6 +150,7 @@ func (s *Session) LatestCounts(table string) ([]LanguageDateCount, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer cur.Close()
 	counts := []LanguageDateCount{}
 	err = cur.All(&counts)
 	return counts, err

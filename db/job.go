@@ -83,6 +83,7 @@ func (s *Session) WaitingJobCount() (count int, err error) {
 	if err != nil {
 		return
 	}
+	defer cur.Close()
 	err = cur.One(&count)
 	return
 }
