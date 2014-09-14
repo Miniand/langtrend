@@ -10,7 +10,6 @@ import (
 
 func periodTypes() []period.Perioder {
 	return []period.Perioder{
-		&period.Week{},
 		&period.Month{},
 		&period.Quarter{},
 		&period.Year{},

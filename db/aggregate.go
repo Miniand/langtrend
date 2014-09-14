@@ -246,7 +246,6 @@ func (s *Session) LanguageCountForPeriod(kind, language string,
 	if err != nil {
 		return 0, err
 	}
-	defer cur.Close() // Current hack to prevent too many gorethink connections opening
 	var sum int
 	err = cur.One(&sum)
 	return sum, err
