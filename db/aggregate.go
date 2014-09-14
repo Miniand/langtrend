@@ -45,9 +45,8 @@ func (s *Session) EarliestAggregates(kind string) ([]Aggregate, error) {
 		return row.Field("reduction")
 	}).OrderBy("language", "type").Run(s.Session)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch earliest aggregates, %s", err)
 	}
-	defer cur.Close()
 	aggregates := []Aggregate{}
 	err = cur.All(&aggregates)
 	return aggregates, err
@@ -60,9 +59,8 @@ func (s *Session) LatestAggregates(kind string) ([]Aggregate, error) {
 		return row.Field("reduction")
 	}).OrderBy("language", "type").Run(s.Session)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch latest aggregates, %s", err)
 	}
-	defer cur.Close()
 	aggregates := []Aggregate{}
 	err = cur.All(&aggregates)
 	return aggregates, err
@@ -74,9 +72,8 @@ func (s *Session) TotalDirtyAggregates(kind string) ([]Aggregate, error) {
 		true,
 	).Run(s.Session)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch total_dirty aggregates, %s", err)
 	}
-	defer cur.Close()
 	aggregates := []Aggregate{}
 	err = cur.All(&aggregates)
 	return aggregates, err
@@ -94,9 +91,8 @@ func (s *Session) DirtyPeriods(kind, field string) ([]period.Perioder, error) {
 		}
 	}).Run(s.Session)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch dirty periods, %s", err)
 	}
-	defer cur.Close()
 	agg := Aggregate{}
 	periods := []period.Perioder{}
 	for cur.Next(&agg) {
@@ -143,9 +139,8 @@ func (s *Session) GrandTotalForPeriod(kind string, start, end time.Time) (int, e
 		Index: "date",
 	}).Sum("count").Run(s.Session)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to fetch grand total for period, %s", err)
 	}
-	defer cur.Close()
 	var sum int
 	err = cur.One(&sum)
 	return sum, err
@@ -154,13 +149,13 @@ func (s *Session) GrandTotalForPeriod(kind string, start, end time.Time) (int, e
 func (s *Session) UpdateGrandTotalForPeriod(kind string, per period.Perioder) (int, error) {
 	_, agg, err := s.FindAggregate(kind, GrandTotalField, per)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to find aggregate when updating grand total for period, %s", err)
 	}
 	start := per.Start()
 	end := per.End()
 	count, err := s.GrandTotalForPeriod(kind, start, end)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to fetch count when updating grand total for period, %s", err)
 	}
 	agg.Total = count
 	agg.TotalDirty = false
@@ -177,9 +172,8 @@ func (s *Session) AggregatesForPeriod(
 		[]interface{}{per.Identifier(), per.Start()},
 	).OrderBy(gorethink.Desc("total")).Run(s.Session)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch aggregates for period, %s", err)
 	}
-	defer cur.Close()
 	agg := []Aggregate{}
 	err = cur.All(&agg)
 	return agg, err
@@ -188,7 +182,7 @@ func (s *Session) AggregatesForPeriod(
 func (s *Session) UpdateRatiosForPeriod(kind string, per period.Perioder) error {
 	aggregates, err := s.AggregatesForPeriod(kind, per)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to fetch aggregates for period when updating ratios for period, %s", err)
 	}
 	foundTotal := false
 	total := Aggregate{}
@@ -200,7 +194,7 @@ func (s *Session) UpdateRatiosForPeriod(kind string, per period.Perioder) error 
 		}
 	}
 	if !foundTotal {
-		return fmt.Errorf("could not find grand total for %s", per)
+		return fmt.Errorf("could not find grand total for %s when updating ratios for period", per)
 	}
 	for _, a := range aggregates {
 		if a.Language == GrandTotalField {
@@ -209,7 +203,7 @@ func (s *Session) UpdateRatiosForPeriod(kind string, per period.Perioder) error 
 		a.Ratio = float64(a.Total) / float64(total.Total)
 		a.RatioDirty = false
 		if _, err := s.SaveAggregate(kind, a); err != nil {
-			return err
+			return fmt.Errorf("unable to save aggregate when updating ratios for period, %s")
 		}
 	}
 	return nil
@@ -248,7 +242,7 @@ func (s *Session) LanguageCountForPeriod(kind, language string,
 	if err != nil {
 		return 0, err
 	}
-	defer cur.Close()
+	defer cur.Close() // Current hack to prevent too many gorethink connections opening
 	var sum int
 	err = cur.One(&sum)
 	return sum, err
@@ -282,7 +276,6 @@ func (s *Session) FindAggregate(kind, language string,
 	if err != nil {
 		return
 	}
-	defer cur.Close()
 	found = true
 	err = cur.One(&agg)
 	switch err {
@@ -298,23 +291,27 @@ func (s *Session) FindAggregate(kind, language string,
 	return
 }
 
-func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
-	// Find the latest period with rankings
+func (s *Session) LatestAggregateOfType(kind, perType string) (Aggregate, error) {
+	a := Aggregate{}
 	cur, err := s.Db().Table(AggregateTable(kind)).GetAllByIndex(
 		"type",
 		perType,
 	).Filter(gorethink.Row.Field("rank").Gt(0)).
 		OrderBy(gorethink.Desc("start")).Limit(1).Run(s.Session)
 	if err != nil {
-		return nil, err
+		return a, err
 	}
-	defer cur.Close()
-	a := Aggregate{}
-	if err = cur.One(&a); err != nil {
+	err = cur.One(&a)
+	return a, err
+}
+
+func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
+	a, err := s.LatestAggregateOfType(kind, perType)
+	if err != nil {
 		return nil, err
 	}
 	// Get top ranked
-	cur, err = s.Db().Table(AggregateTable(kind)).GetAllByIndex(
+	cur, err := s.Db().Table(AggregateTable(kind)).GetAllByIndex(
 		IndexName("type", "start"),
 		[]interface{}{perType, a.Start},
 	).Filter(gorethink.Row.Field("language").Ne(GrandTotalField)).
@@ -322,7 +319,6 @@ func (s *Session) TopRanked(kind, perType string) ([]Aggregate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	agg := []Aggregate{}
 	err = cur.All(&agg)
 	return agg, err
@@ -338,7 +334,6 @@ func (s *Session) AggregatesForLanguageAndType(
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close()
 	agg := []Aggregate{}
 	err = cur.All(&agg)
 	return agg, err

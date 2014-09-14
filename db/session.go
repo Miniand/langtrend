@@ -3,6 +3,7 @@ package db
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/dancannon/gorethink"
 )
@@ -35,6 +36,8 @@ func (o *Options) address() string {
 func (o *Options) rethinkdb() gorethink.ConnectOpts {
 	o.Rethinkdb.Address = o.address()
 	o.Rethinkdb.Database = o.database()
+	o.Rethinkdb.MaxIdle = 10
+	o.Rethinkdb.IdleTimeout = 10 * time.Second
 	return o.Rethinkdb
 }
 
