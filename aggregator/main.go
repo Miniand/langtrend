@@ -31,6 +31,6 @@ func main() {
 		Password: os.Getenv("GITHUB_PASSWORD"),
 		Earliest: earliest,
 	}).Aggregate(); err != nil {
-		log.Fatalf("Error running aggregate, %s")
+		log.Fatalf("Error running aggregate, %s", err)
 	}
 }
