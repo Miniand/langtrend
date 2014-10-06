@@ -37,7 +37,6 @@ func (w *Worker) UpdateGrandTotal(kind string, per period.Perioder) error {
 }
 
 func (w *Worker) Aggregate() (err error) {
-	defer w.EnqueueAggregate(time.Now().Add(time.Hour))
 	for _, kind := range []string{"created", "pushed"} {
 		// Store the absolute earliest and latest counts for total creation
 		earliestDate := time.Time{}
@@ -213,7 +212,7 @@ func (w *Worker) Aggregate() (err error) {
 			return err
 		}
 		for _, p := range ratioDirty {
-			log.Printf("Updating ratios for %s", p)
+			log.Printf("Updating %s ratios for %s", kind, p)
 			if err := w.Options.Db.UpdateRatiosForPeriod(kind, p); err != nil {
 				return err
 			}
@@ -224,7 +223,7 @@ func (w *Worker) Aggregate() (err error) {
 			return err
 		}
 		for _, p := range rankDirty {
-			log.Printf("Updating ranks for %s", p)
+			log.Printf("Updating %s ranks for %s", kind, p)
 			if err := w.Options.Db.UpdateRanksForPeriod(kind, p); err != nil {
 				return err
 			}

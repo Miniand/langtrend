@@ -43,7 +43,8 @@ func (s *Session) Enqueue(j Job) error {
 func (s *Session) NextJob() (job Job, ok bool, err error) {
 	wr, err := s.Db().Table(TableJobs).OrderBy(gorethink.OrderByOpts{
 		Index: IndexName("state", "after", "createdAt"),
-	}).Limit(1).Filter(gorethink.Row.Field("state").Eq(JobStateWaiting)).
+	}).Limit(1).Filter(gorethink.Row.Field("state").Eq(JobStateWaiting).And(
+		gorethink.Row.Field("after").Le(time.Now()))).
 		Update(map[string]interface{}{
 		"state": JobStateRunning,
 	}, gorethink.UpdateOpts{

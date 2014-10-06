@@ -24,7 +24,6 @@ type FetchJobArgs struct {
 
 func (w *Worker) EnqueueCreateGHJobs(after time.Time) error {
 	return w.Options.Db.Enqueue(db.Job{
-		Id:    JobCreateGHJobs,
 		Type:  JobCreateGHJobs,
 		After: after,
 	})
@@ -44,7 +43,6 @@ func (w *Worker) EnqueueFetch(kind, language string, date time.Time) error {
 
 func (w *Worker) EnqueueAggregate(after time.Time) error {
 	return w.Options.Db.Enqueue(db.Job{
-		Id:    JobAggregate,
 		Type:  JobAggregate,
 		After: after,
 	})
@@ -78,7 +76,10 @@ func prevDay(t time.Time) time.Time {
 
 func (w *Worker) RunCreateGHJobs() error {
 	log.Print("Creating GitHub jobs, this may take some time")
-	defer w.EnqueueCreateGHJobs(time.Now().Add(6 * time.Hour))
+	defer func() {
+		w.EnqueueAggregate(time.Now().Add(1 * time.Second))
+		w.EnqueueCreateGHJobs(time.Now().Add(6 * time.Hour))
+	}()
 	maxDate := floorDay(time.Now().Add(2 * -24 * time.Hour))
 	minDate := w.Options.earliest()
 	for _, kind := range []string{"created", "pushed"} {

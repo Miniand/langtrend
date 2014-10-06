@@ -18,12 +18,9 @@ func (w *Worker) Run() {
 	if waiting, err := w.Options.Db.WaitingJobCount(); err != nil {
 		log.Printf("Error getting waiting job count, %s", err)
 	} else if waiting == 0 {
-		log.Print("No jobs found, enqueuing GitHub jobs and aggregate")
+		log.Print("No jobs found, enqueuing GitHub jobs")
 		if err := w.EnqueueCreateGHJobs(time.Now()); err != nil {
 			log.Printf("Error enqueuing GitHub jobs, %s", err)
-		}
-		if err := w.EnqueueAggregate(time.Now().Add(3 * time.Hour)); err != nil {
-			log.Printf("Error enqueuing aggregate, %s", err)
 		}
 	}
 	for {
